@@ -1,0 +1,33 @@
+name:                currymon
+version:             0.1.0.0
+synopsis:            A monster collecting game that incorporates lambda-calculus concepts
+-- description:
+homepage:            https://github.com/GeeLeonidas/currymon
+license:             GPL3
+license-file:        LICENSE
+author:              Guilherme Leoi, Vinicius Russo
+maintainer:          geeleonidas@pm.com
+copyright:           2007 Free Software Foundation, Inc.
+category:            Game
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable currymon
+  hs-source-dirs:      app, src
+  main-is:             Main.hs
+  other-modules:       Currymon
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , linear >= 1.21 && < 2
+                     , text >= 1.2 && < 2
+                     , sdl2 >= 2.5.5
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints

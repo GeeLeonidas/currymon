@@ -22,7 +22,12 @@ resolver:
 
 nix:
   enable: true
-  packages: [ pkgconfig, SDL2, SDL2_image ]
+  packages: [
+    pkgconfig
+  , SDL2
+  , SDL2_image
+  , SDL2_ttf 
+  ]
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.

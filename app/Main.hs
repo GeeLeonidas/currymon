@@ -2,7 +2,6 @@ module Main (main) where
 
 import SDL
 
-import Linear (V4(..))
 import Data.Text (pack)
 import Control.Monad (unless)
 
@@ -20,14 +19,10 @@ main = do
 appLoop :: Renderer -> IO ()
 appLoop renderer = do
   events <- pollEvents
-  let eventIsQPress event =
-        case eventPayload event of
-          KeyboardEvent keyboardEvent ->
-            keyboardEventKeyMotion keyboardEvent == Pressed &&
-            keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
-          _ -> False
-      qPressed = any eventIsQPress events
+  let exiting = any eventIsExit events
+
   rendererDrawColor renderer $= V4 245 245 245 255
   clear renderer
   present renderer
-  unless qPressed (appLoop renderer)
+  
+  unless exiting (appLoop renderer)

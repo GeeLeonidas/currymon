@@ -22,6 +22,7 @@ executable currymon
                      , linear >= 1.21 && < 2
                      , text >= 1.2 && < 2
                      , sdl2 >= 2.5.5
+                     , sdl2-image >= 2.1
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities

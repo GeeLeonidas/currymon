@@ -43,7 +43,8 @@ gameWindowConfig = WindowConfig {
 
 spritePaths :: [FilePath]
 spritePaths = [
-    "./res/battle-concept1.png"
+    "./res/sprite/missing.png"
+  , "./res/sprite/battle-concept1.png"
   ]
 
 fontPaths :: [FilePath]
@@ -64,12 +65,12 @@ loadSprites r (x:ys) = union <$> (singleton key <$> loadTexture r x) <*> recur
     key = takeBaseName x
     recur = loadSprites r ys
 
-loadFonts :: MonadIO m => Renderer -> [FilePath] -> PointSize -> m (HashMap String Font)
-loadFonts _ [] _     = pure empty
-loadFonts r (x:ys) n = union <$> (singleton key <$> SDL.Font.load x n) <*> recur
+loadFonts :: MonadIO m => [FilePath] -> PointSize -> m (HashMap String Font)
+loadFonts [] _     = pure empty
+loadFonts (x:ys) n = union <$> (singleton key <$> SDL.Font.load x n) <*> recur
   where
     key = takeBaseName x
-    recur = loadFonts r ys n
+    recur = loadFonts ys n
 
 destroySprites :: MonadIO m => HashMap String Texture -> m ()
 destroySprites hm

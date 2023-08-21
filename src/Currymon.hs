@@ -10,6 +10,7 @@ module Currymon (
   , freeFonts
   , eventIsExit
   , textureBounds
+  , drawTexture
   ) where
 
 import SDL
@@ -95,3 +96,8 @@ freeFonts hm
 textureBounds :: MonadIO m => Texture -> m (V2 CInt)
 textureBounds t = bounds <$> queryTexture t
   where bounds info = V2 (textureWidth info) (textureHeight info)
+
+drawTexture :: MonadIO m => Renderer -> (CInt -> CInt) -> Texture -> Point V2 CInt -> m ()
+drawTexture r f t p = do
+  tb <- textureBounds t
+  copy r t Nothing $ Just $ f <$> Rectangle p tb

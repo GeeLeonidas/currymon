@@ -1,5 +1,7 @@
 module Currymon (
-    gameRes
+    gameWidth
+  , gameHeight
+  , gameRes
   , renderScale
   , gameWindowConfig
   , spritePaths
@@ -23,8 +25,14 @@ import Data.HashMap.Strict
 import System.FilePath
 
 
+gameWidth :: Integral a => a
+gameWidth = 160
+
+gameHeight :: Integral a => a
+gameHeight = 144
+
 gameRes :: Integral a => V2 a
-gameRes = V2 160 144
+gameRes = V2 gameWidth gameHeight
 
 renderScale :: Integral a => a -> a
 renderScale = (* 4)

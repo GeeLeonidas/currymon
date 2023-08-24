@@ -35,7 +35,7 @@ appLoop window renderer sprites fonts count = do
   let exiting = any eventIsExit events
 
   clear renderer
-  draw mainBattleScene
+  draw $ mainBattleScene "Lorem ipsum, dolor sit amet"
   present renderer
 
   threadDelay 30000

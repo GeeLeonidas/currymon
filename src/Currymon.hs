@@ -55,19 +55,18 @@ gameWindowConfig = WindowConfig {
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
-  , fontDraws :: [(String, Color, Point V2 CInt)] 
+  , fontDraws :: [(String, Color, Point V2 CInt, String)] 
   }
 
--- TODO: Runtime Scene generators
-mainBattleScene :: Scene
-mainBattleScene = Scene sDraws fDraws
+mainBattleScene :: String -> Scene
+mainBattleScene content = Scene sDraws fDraws
   where
     sDraws = [
         ("battle-concept1", P $ V2 10 60)
       , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
       ]
     fDraws = [
-        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20))
+        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
       ]
 
 spritePaths :: [FilePath]
@@ -149,9 +148,9 @@ drawScene r f s hms hmf = do
     drawFonts renderer factor (Scene zs (x:ys)) fonts = do
       drawFonts renderer factor (Scene zs ys) fonts
       let
-        (key, color, pos@(P (V2 textX _))) = x
+        (key, color, pos@(P (V2 textX _)), content) = x
         font = findWithDefault undefined key fonts
-      surface <- SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack "Lorem ipsum, dolor sit amet")
+      surface <- SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)
       texture <- createTextureFromSurface renderer surface
       drawTexture renderer factor texture pos
       freeSurface surface

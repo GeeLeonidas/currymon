@@ -4,6 +4,7 @@ module Currymon (
   , gameRes
   , renderScale
   , gameWindowConfig
+  , mainBattleScene
   , spritePaths
   , fontPaths
   , loadSprites
@@ -13,6 +14,7 @@ module Currymon (
   , eventIsExit
   , textureBounds
   , drawTexture
+  , drawScene
   ) where
 
 import SDL
@@ -23,6 +25,7 @@ import Foreign.C
 import Control.Monad.IO.Class (MonadIO)
 import Data.HashMap.Strict
 import System.FilePath
+import Data.Text (pack)
 
 
 gameWidth :: Integral a => a
@@ -49,6 +52,23 @@ gameWindowConfig = WindowConfig {
   , windowGraphicsContext = NoGraphicsContext
   , windowBorder          = True
   }
+
+data Scene = Scene {
+    spriteDraws :: [(String, Point V2 CInt)]
+  , fontDraws :: [(String, Color, Point V2 CInt)] 
+  }
+
+-- TODO: Runtime Scene generators
+mainBattleScene :: Scene
+mainBattleScene = Scene sDraws fDraws
+  where
+    sDraws = [
+        ("battle-concept1", P $ V2 10 60)
+      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
+      ]
+    fDraws = [
+        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20))
+      ]
 
 spritePaths :: [FilePath]
 spritePaths = [
@@ -109,3 +129,30 @@ drawTexture :: MonadIO m => Renderer -> (CInt -> CInt) -> Texture -> Point V2 CI
 drawTexture r f t p = do
   tb <- textureBounds t
   copy r t Nothing $ Just $ f <$> Rectangle p tb
+
+drawScene :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Texture -> HashMap String Font -> m ()
+drawScene r f s hms hmf = do
+  drawSprites r f s hms
+  drawFonts r f s hmf
+  where
+    drawSprites :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Texture -> m ()
+    drawSprites _        _      (Scene []     _ ) _       = do pure ()
+    drawSprites renderer factor (Scene (x:ys) zs) sprites = do
+      drawSprites renderer factor (Scene ys zs) sprites
+      let
+        (key, pos) = x
+        missingSprite = findWithDefault undefined "missing" sprites
+        currentSprite = findWithDefault missingSprite key sprites
+      drawTexture renderer factor currentSprite pos
+    drawFonts :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Font -> m ()
+    drawFonts _        _      (Scene _  []    ) _     = do pure ()
+    drawFonts renderer factor (Scene zs (x:ys)) fonts = do
+      drawFonts renderer factor (Scene zs ys) fonts
+      let
+        (key, color, pos@(P (V2 textX _))) = x
+        font = findWithDefault undefined key fonts
+      surface <- SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack "Lorem ipsum, dolor sit amet")
+      texture <- createTextureFromSurface renderer surface
+      drawTexture renderer factor texture pos
+      freeSurface surface
+      destroyTexture texture

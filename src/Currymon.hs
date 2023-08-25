@@ -75,7 +75,7 @@ advanceFSM :: SceneFSM -> [Event] -> SceneFSM
 advanceFSM (MainBattle option) events = case option of
   "Fight" -> if any eventIsActionRight events then MainBattle "Item" else MainBattle option
   "Item" -> if any eventIsActionLeft events then MainBattle "Fight" else MainBattle option
-  _ -> undefined
+  _ -> error "Invalid option for MainBattle state"
 
 advanceFSM (MoveSelection option) events = case option of
   1 -> case (any eventIsActionRight events, any eventIsActionDown events) of
@@ -94,7 +94,7 @@ advanceFSM (MoveSelection option) events = case option of
     (True, _) -> MoveSelection 3
     (_, True) -> MoveSelection 2
     _ -> MoveSelection option
-  _ -> undefined
+  _ -> error "Invalid option for MoveSelection state"
 
 advanceFSM (ItemSelection option) events = undefined
 

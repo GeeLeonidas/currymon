@@ -53,6 +53,24 @@ gameWindowConfig = WindowConfig {
   , windowBorder          = True
   }
 
+newtype Dice a = Dice [a]
+
+noDice :: Integral a => Dice a
+noDice = Dice [0]
+
+d4 :: Integral a => Dice a
+d4 = Dice [1,2,3,4]
+
+d6 :: Integral a => Dice a
+d6 = Dice [1,2,3,4,5,6]
+
+dCrazy :: Integral a => Dice a
+dCrazy = Dice [0,0,21]
+
+roll :: Dice a -> Int -> a
+roll (Dice []) _ = error "No roll information for this Dice"
+roll (Dice xs) i = xs !! (i `mod` length xs)
+
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
   , fontDraws :: [(String, Color, Point V2 CInt, String)]

@@ -201,7 +201,7 @@ drawScene r f s hms hmf = do
       drawSprites renderer factor (Scene ys zs) sprites
       let
         (key, pos) = x
-        missingSprite = findWithDefault undefined "missing" sprites
+        missingSprite = findWithDefault (error "\"missing\" sprite is missing") "missing" sprites
         currentSprite = findWithDefault missingSprite key sprites
       drawTexture renderer factor currentSprite pos
     drawFonts :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Font -> m ()
@@ -210,7 +210,7 @@ drawScene r f s hms hmf = do
       drawFonts renderer factor (Scene zs ys) fonts
       let
         (key, color, pos@(P (V2 textX _)), content) = x
-        font = findWithDefault undefined key fonts
+        font = findWithDefault (error $ '\"' : key ++ "\" font is missing") key fonts
       surface <- SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)
       texture <- createTextureFromSurface renderer surface
       drawTexture renderer factor texture pos

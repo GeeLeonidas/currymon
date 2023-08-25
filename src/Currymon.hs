@@ -55,7 +55,7 @@ gameWindowConfig = WindowConfig {
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
-  , fontDraws :: [(String, Color, Point V2 CInt, String)] 
+  , fontDraws :: [(String, Color, Point V2 CInt, String)]
   }
 
 mainBattleScene :: String -> Scene
@@ -69,34 +69,37 @@ mainBattleScene content = Scene sDraws fDraws
         ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
       ]
 
-data SceneFSM = MainBattle String | MoveSelection Int | ItemSelection Int
+data SceneFSM = MainBattle String | MoveSelection (V2 CInt) | ItemSelection (V2 CInt)
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
 advanceFSM (MainBattle option) events = case option of
   "Fight" -> if any eventIsActionRight events then MainBattle "Item" else MainBattle option
   "Item" -> if any eventIsActionLeft events then MainBattle "Fight" else MainBattle option
-  _ -> error "Invalid option for MainBattle state"
+  _ -> MainBattle "Fight"
 
-advanceFSM (MoveSelection option) events = case option of
-  1 -> case (any eventIsActionRight events, any eventIsActionDown events) of
-    (True, _) -> MoveSelection 2
-    (_, True) -> MoveSelection 3
-    _ -> MoveSelection option
-  2 -> case (any eventIsActionLeft events, any eventIsActionDown events) of
-    (True, _) -> MoveSelection 1
-    (_, True) -> MoveSelection 4
-    _ -> MoveSelection option
-  3 -> case (any eventIsActionRight events, any eventisActionUp events) of
-    (True, _) -> MoveSelection 4
-    (_, True) -> MoveSelection 1
-    _ -> MoveSelection option
-  4 -> case (any eventIsActionLeft events, any eventisActionUp events) of
-    (True, _) -> MoveSelection 3
-    (_, True) -> MoveSelection 2
-    _ -> MoveSelection option
-  _ -> error "Invalid option for MoveSelection state"
+advanceFSM (MoveSelection (V2 xIdx yIdx)) events = MoveSelection $ V2 newXIdx newYIdx
+  where
+    xipa = xIdx + xAction
+    yipa = yIdx + yAction
+    newXIdx = min (max xipa 0) 1
+    newYIdx = min (max yipa 0) 1
+    xAction
+      | any eventIsActionRight events =  1
+      | any eventIsActionLeft events  = -1
+      | otherwise                     =  0
+    yAction
+      | any eventisActionUp events   =  1
+      | any eventIsActionDown events = -1
+      | otherwise                    =  0
 
-advanceFSM (ItemSelection option) events = undefined
+advanceFSM (ItemSelection (V2 _ idx)) events = ItemSelection $ V2 0 newIdx
+  where
+    ipa = idx + action
+    newIdx = max ipa 0
+    action
+      | any eventisActionUp events   =  1
+      | any eventIsActionDown events = -1
+      | otherwise                    =  0
 
 eventIsActionLeft :: Event -> Bool
 eventIsActionLeft event =

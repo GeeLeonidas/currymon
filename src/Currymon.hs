@@ -69,6 +69,73 @@ mainBattleScene content = Scene sDraws fDraws
         ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
       ]
 
+data SceneFSM = MainBattle String | MoveSelection Int | ItemSelection Int
+
+advanceFSM :: SceneFSM -> [Event] -> SceneFSM
+advanceFSM (MainBattle option) events = case option of
+  "Fight" -> if any eventIsActionRight events then MainBattle "Item" else MainBattle option
+  "Item" -> if any eventIsActionLeft events then MainBattle "Fight" else MainBattle option
+  _ -> undefined
+
+advanceFSM (MoveSelection option) events = case option of
+  1 -> case (any eventIsActionRight events, any eventIsActionDown events) of
+    (True, _) -> MoveSelection 2
+    (_, True) -> MoveSelection 3
+    _ -> MoveSelection option
+  2 -> case (any eventIsActionLeft events, any eventIsActionDown events) of
+    (True, _) -> MoveSelection 1
+    (_, True) -> MoveSelection 4
+    _ -> MoveSelection option
+  3 -> case (any eventIsActionRight events, any eventisActionUp events) of
+    (True, _) -> MoveSelection 4
+    (_, True) -> MoveSelection 1
+    _ -> MoveSelection option
+  4 -> case (any eventIsActionLeft events, any eventisActionUp events) of
+    (True, _) -> MoveSelection 3
+    (_, True) -> MoveSelection 2
+    _ -> MoveSelection option
+  _ -> undefined
+
+advanceFSM (ItemSelection option) events = undefined
+
+eventIsActionLeft :: Event -> Bool
+eventIsActionLeft event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeLeft)
+    _ -> False
+
+eventIsActionRight :: Event -> Bool
+eventIsActionRight event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeRight)
+    _ -> False
+
+eventisActionUp :: Event -> Bool
+eventisActionUp event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeUp)
+    _ -> False
+
+eventIsActionDown :: Event -> Bool
+eventIsActionDown event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeDown)
+    _ -> False
+
+eventIsExit :: Event -> Bool
+eventIsExit event =
+  case eventPayload event of
+    WindowClosedEvent _ -> True
+    _ -> False
+
 spritePaths :: [FilePath]
 spritePaths = [
     "./res/sprite/missing.png"
@@ -79,12 +146,6 @@ fontPaths :: [FilePath]
 fontPaths = [
     "./res/font/public-pixel/PublicPixel.ttf"
   ]
-
-eventIsExit :: Event -> Bool
-eventIsExit event =
-  case eventPayload event of
-    WindowClosedEvent _ -> True
-    _ -> False
 
 loadSprites :: MonadIO m => Renderer -> [FilePath] -> m (HashMap String Texture)
 loadSprites _ []     = pure empty

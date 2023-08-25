@@ -55,9 +55,6 @@ gameWindowConfig = WindowConfig {
 
 newtype Dice a = Dice [a]
 
-noDice :: Integral a => Dice a
-noDice = Dice [0]
-
 d4 :: Integral a => Dice a
 d4 = Dice [1,2,3,4]
 
@@ -70,6 +67,19 @@ dCrazy = Dice [0,0,21]
 roll :: Dice a -> Int -> a
 roll (Dice []) _ = error "No roll information for this Dice"
 roll (Dice xs) i = xs !! (i `mod` length xs)
+
+data MoveType = Rock | Paper | Scissors | Typeless
+data Move = Move {
+    moveName  :: String
+  , moveDesc  :: String
+  , moveType  :: MoveType
+  , moveDices :: [Dice CInt]
+  }
+
+rollMove :: Move -> [Int] -> (CInt, [Int])
+rollMove (Move _ _ _ [])     rand = (0, rand)
+rollMove (Move n d t (x:ys)) rand = (roll x (head rand) + recurDamage, recurRand)
+  where (recurDamage, recurRand) = rollMove (Move n d t ys) (tail rand)
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]

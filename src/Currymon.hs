@@ -5,6 +5,7 @@ module Currymon (
   , renderScale
   , gameWindowConfig
   , mainBattleScene
+  , moveSelectionScene
   , SceneFSM(..)
   , BattleState(..)
   , initialBattleState
@@ -189,7 +190,24 @@ mainBattleScene sel = Scene sDraws fDraws
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), monsterContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, runContent, False)
       ]
-      
+
+moveSelectionScene :: Integral a => V2 a -> Monster -> Scene
+moveSelectionScene sel ally = Scene sDraws fDraws
+  where
+    moveOneContent = (if sel == V2 0 0 then ">" else "") ++ moveName (selectMove 0 ally)
+    moveTwoContent = (if sel == V2 1 0 then ">" else "") ++ moveName (selectMove 1 ally)
+    moveThreeContent = (if sel == V2 0 1 then ">" else "") ++ moveName (selectMove 2 ally)
+    moveFourContent = (if sel == V2 1 1 then ">" else "") ++ moveName (selectMove 3 ally)
+    sDraws = [
+        ("battle-concept1", P $ V2 10 60)
+      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
+      ]
+    fDraws = [
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), moveOneContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, moveTwoContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), moveThreeContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, moveFourContent, False)
+      ]
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 

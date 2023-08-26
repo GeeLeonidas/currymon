@@ -109,6 +109,8 @@ lomba :: Monster
 lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush)
   where maxHP = 35
 
+data Item -- TODO
+
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
   , fontDraws   :: [(String, Color, Point V2 CInt, String)]
@@ -125,7 +127,7 @@ mainBattleScene content = Scene sDraws fDraws
         ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
       ]
 
-data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt)
+data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
 advanceFSM (MainBattle (V2 xIdx yIdx)) events
@@ -146,6 +148,7 @@ advanceFSM (MainBattle (V2 xIdx yIdx)) events
       | otherwise                    =  0
 
 advanceFSM (MoveSelection (V2 xIdx yIdx)) events
+  | any eventIsActionConfirm events = BattleDialog
   | any eventIsActionBack events = MainBattle (V2 0 0)
   | otherwise = MoveSelection $ V2 newXIdx newYIdx
   where
@@ -163,6 +166,7 @@ advanceFSM (MoveSelection (V2 xIdx yIdx)) events
       | otherwise                    =  0
 
 advanceFSM (ItemSelection (V2 _ idx)) events
+  | any eventIsActionConfirm events = BattleDialog
   | any eventIsActionBack events = MainBattle (V2 1 0)
   | otherwise = ItemSelection $ V2 0 newIdx
   where
@@ -172,6 +176,36 @@ advanceFSM (ItemSelection (V2 _ idx)) events
       | any eventisActionUp events   =  1
       | any eventIsActionDown events = -1
       | otherwise                    =  0
+
+advanceFSM BattleDialog _ = BattleDialog
+
+data BattleState = BattleState {
+    sceneFSM       :: SceneFSM
+  , allyMonster    :: Monster
+  , enemyMonster   :: Monster
+  , availableItems :: [Item]
+  , dialogContent  :: String
+  , dialogMessages :: [String]
+  }
+
+updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> BattleState
+updateBattleState (BattleState (MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand count = undefined
+updateBattleState (BattleState (ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count = undefined
+
+updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) events _ count
+  | any eventIsActionConfirm events = if content == x
+    then ini "" ys
+    else ini x (x:ys)
+  | otherwise = if content /= x && count `mod` 8 == 0
+    then ini (take (length content + 1) x) (x:ys)
+    else ini content (x:ys)
+  where ini = BattleState BattleDialog ally enemy items
+
+updateBattleState (BattleState BattleDialog ally enemy items _ []) _ _ _ =
+  BattleState (MainBattle $ V2 0 0) ally enemy items "" []
+
+updateBattleState (BattleState fsm ally enemy items content messages) events _ _ =
+  BattleState (advanceFSM fsm events) ally enemy items content messages
 
 eventIsActionLeft :: Event -> Bool
 eventIsActionLeft event =

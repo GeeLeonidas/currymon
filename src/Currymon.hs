@@ -54,6 +54,11 @@ gameWindowConfig = WindowConfig {
   }
 
 newtype Dice a = Dice [a]
+instance Functor Dice where
+  fmap f (Dice xs) = Dice $ f <$> xs
+
+d1 :: Integral a => Dice a
+d1 = Dice [1]
 
 d4 :: Integral a => Dice a
 d4 = Dice [1,2,3,4]
@@ -80,6 +85,18 @@ data Move = Move {
   , moveType  :: MoveType
   , moveDices :: [Dice CInt]
   }
+
+smack :: Move
+smack = Move "Smack" "Rolls one d4 + 5 for damage" Rock [d4, (5*) <$> d1]
+
+slit :: Move
+slit = Move "Slit" "Rolls three d4's for damage" Paper [d4, d4, d4]
+
+puncture :: Move
+puncture = Move "Puncture" "Rolls two d6's for damage" Scissors [d6, d6]
+
+crush :: Move
+crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]

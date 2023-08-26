@@ -109,6 +109,43 @@ lomba :: Monster
 lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush)
   where maxHP = 35
 
+selectMove :: Int -> Monster -> Move
+selectMove i (Monster _ _ _ moves) =
+  case i `mod` 4 of
+    0 -> let (V4 r _ _ _) = moves in r
+    1 -> let (V4 _ r _ _) = moves in r
+    2 -> let (V4 _ _ r _) = moves in r
+    3 -> let (V4 _ _ _ r) = moves in r
+    _ -> undefined
+
+receiveMultipleDamage :: Monster -> [CInt] -> Monster
+receiveMultipleDamage (Monster n hp mhp kms) ds = Monster n (min newHP 0) mhp kms
+  where newHP = Prelude.foldl (-) hp ds
+
+useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [Int])
+useMove idx ally enemy rand = (finalAlly, finalEnemy, finalRand)
+  where
+    allyMove = selectMove idx ally
+    enemyMove = selectMove (head rand) enemy
+    (allyDamages, newRand) = rollMultiple (moveDices allyMove) (tail rand)
+    (enemyDamages, finalRand) = rollMultiple (moveDices enemyMove) newRand
+    diff = length allyDamages - length enemyDamages
+    (newAlly, newEnemy)
+      | diff > 0  = (ally, receiveMultipleDamage enemy (take diff allyDamages))
+      | diff < 0  = (receiveMultipleDamage ally (take (-diff) enemyDamages), enemy)
+      | otherwise = (ally, enemy)
+    (newAllyDamages, newEnemyDamages)
+      | diff > 0  = (drop diff allyDamages, enemyDamages)
+      | diff < 0  = (allyDamages, drop (-diff) enemyDamages)
+      | otherwise = (allyDamages, enemyDamages)
+    (finalAlly, finalEnemy)
+      | healthPoints newAlly  <= 0 = (newAlly, newEnemy)
+      | healthPoints newEnemy <= 0 = (newAlly, newEnemy)
+      | otherwise = (
+          receiveMultipleDamage newAlly newEnemyDamages
+        , receiveMultipleDamage newEnemy newAllyDamages
+        )
+
 data Item -- TODO
 
 data Scene = Scene {

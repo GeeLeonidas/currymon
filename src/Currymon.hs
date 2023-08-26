@@ -148,6 +148,9 @@ useMove idx ally enemy rand = (finalAlly, finalEnemy, finalRand)
 
 data Item -- TODO
 
+useItem :: Item -> Monster -> Monster -> [Int] -> (Monster, Monster, [Int])
+useItem = undefined -- TODO
+
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
   , fontDraws   :: [(String, Color, Point V2 CInt, String)]

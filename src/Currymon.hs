@@ -79,6 +79,7 @@ rollMultiple (x:ys) rand = (roll x (head rand) : recurDamage, recurRand)
   where (recurDamage, recurRand) = rollMultiple ys (tail rand)
 
 data MoveType = Rock | Paper | Scissors | Typeless
+  deriving Eq
 data Move = Move {
     moveName  :: String
   , moveDesc  :: String
@@ -97,6 +98,13 @@ puncture = Move "Puncture" "Rolls two d6's for damage" Scissors [d6, d6]
 
 crush :: Move
 crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
+
+hasAdvantageOver :: Move -> Move -> Bool
+hasAdvantageOver (Move _ _ allyType _) (Move _ _ enemyType _) = case enemyType of
+  Typeless -> allyType /= Typeless
+  Scissors -> allyType == Rock
+  Paper    -> allyType == Scissors
+  Rock     -> allyType == Paper
 
 data Monster = Monster {
     monsterName     :: String
@@ -127,8 +135,12 @@ useMove idx ally enemy rand = (finalAlly, finalEnemy, finalRand)
   where
     allyMove = selectMove idx ally
     enemyMove = selectMove (head rand) enemy
-    (allyDamages, newRand) = rollMultiple (moveDices allyMove) (tail rand)
-    (enemyDamages, finalRand) = rollMultiple (moveDices enemyMove) newRand
+    (allyDamagesWoBuff, newRand) = rollMultiple (moveDices allyMove) (tail rand)
+    (enemyDamagesWoBuff, finalRand) = rollMultiple (moveDices enemyMove) newRand
+    allyBuff = ((if allyMove `hasAdvantageOver` enemyMove then 2 else 1)*)
+    enemyBuff = ((if enemyMove `hasAdvantageOver` allyMove then 2 else 1)*)
+    allyDamages = allyBuff <$> allyDamagesWoBuff
+    enemyDamages = enemyBuff <$> enemyDamagesWoBuff
     diff = length allyDamages - length enemyDamages
     (newAlly, newEnemy)
       | diff > 0  = (ally, receiveMultipleDamage enemy (take diff allyDamages))

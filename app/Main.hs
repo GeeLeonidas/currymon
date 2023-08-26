@@ -24,7 +24,7 @@ main = do
   tick <- ticks
 
   let rand = randoms $ mkStdGen $ fromIntegral tick
-  appLoop window renderer sprites fonts rand 0
+  appLoop window renderer sprites fonts initialBattleState rand 0
 
   freeFonts fonts
   destroySprites sprites
@@ -32,17 +32,24 @@ main = do
   destroyWindow window
   SDL.Font.quit
 
-appLoop :: Window -> Renderer -> HashMap String Texture -> HashMap String Font -> [Int] -> Int -> IO ()
-appLoop window renderer sprites fonts rand count = do
+appLoop :: Window -> Renderer -> HashMap String Texture -> HashMap String Font -> BattleState -> [Int] -> Int -> IO ()
+appLoop window renderer sprites fonts state rand count = do
   events <- pollEvents
-  let exiting = any eventIsExit events
+  let
+    exiting = any eventIsExit events
+    newState@(BattleState fsm ally enemy items content messages) =
+      updateBattleState state events rand count
 
+  rendererDrawColor renderer $= V4 255 255 255 255
   clear renderer
-  draw $ mainBattleScene "Lorem ipsum, dolor sit amet"
+  
+  case fsm of
+    MainBattle option -> draw $ mainBattleScene option
+    _ -> pure ()
+
   present renderer
 
   threadDelay 30000
-  unless exiting recur
+  unless exiting (appLoop window renderer sprites fonts newState (tail rand) (count + 1))
   where
     draw s = drawScene renderer renderScale s sprites fonts
-    recur = appLoop window renderer sprites fonts (tail rand) (count + 1)

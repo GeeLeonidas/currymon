@@ -5,6 +5,10 @@ module Currymon (
   , renderScale
   , gameWindowConfig
   , mainBattleScene
+  , SceneFSM(..)
+  , BattleState(..)
+  , initialBattleState
+  , updateBattleState
   , spritePaths
   , fontPaths
   , loadSprites
@@ -168,16 +172,24 @@ data Scene = Scene {
   , fontDraws   :: [(String, Color, Point V2 CInt, String, Bool)]
   }
 
-mainBattleScene :: String -> Scene
-mainBattleScene content = Scene sDraws fDraws
+mainBattleScene :: Integral a => V2 a -> Scene
+mainBattleScene sel = Scene sDraws fDraws
   where
+    fightContent = (if sel == V2 0 0 then ">" else "") ++ "Fight"
+    itemContent = (if sel == V2 1 0 then ">" else "") ++ "Item"
+    monsterContent = (if sel == V2 0 1 then ">" else "") ++ "Monster"
+    runContent = (if sel == V2 1 1 then ">" else "") ++ "Run"
     sDraws = [
         ("battle-concept1", P $ V2 10 60)
       , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
       ]
     fDraws = [
-        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content, True)
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), fightContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, itemContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), monsterContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, runContent, False)
       ]
+      
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 
@@ -195,8 +207,8 @@ advanceFSM (MainBattle (V2 xIdx yIdx)) events
       | any eventIsActionLeft events  = -1
       | otherwise                     =  0
     yAction
-      | any eventisActionUp events   =  1
-      | any eventIsActionDown events = -1
+      | any eventIsActionDown events =  1
+      | any eventIsActionUp events   = -1
       | otherwise                    =  0
 
 advanceFSM (MoveSelection (V2 xIdx yIdx)) events
@@ -213,7 +225,7 @@ advanceFSM (MoveSelection (V2 xIdx yIdx)) events
       | any eventIsActionLeft events  = -1
       | otherwise                     =  0
     yAction
-      | any eventisActionUp events   =  1
+      | any eventIsActionUp events   =  1
       | any eventIsActionDown events = -1
       | otherwise                    =  0
 
@@ -225,7 +237,7 @@ advanceFSM (ItemSelection (V2 _ idx)) events
     ipa = idx + action
     newIdx = max ipa 0
     action
-      | any eventisActionUp events   =  1
+      | any eventIsActionUp events   =  1
       | any eventIsActionDown events = -1
       | otherwise                    =  0
 
@@ -239,6 +251,9 @@ data BattleState = BattleState {
   , dialogContent  :: String
   , dialogMessages :: [String]
   }
+
+initialBattleState :: BattleState
+initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> BattleState
 updateBattleState (BattleState (MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand count = undefined
@@ -275,8 +290,8 @@ eventIsActionRight event =
       ((keysymScancode . keyboardEventKeysym) k == ScancodeRight)
     _ -> False
 
-eventisActionUp :: Event -> Bool
-eventisActionUp event =
+eventIsActionUp :: Event -> Bool
+eventIsActionUp event =
   case eventPayload event of
     KeyboardEvent k ->
       (keyboardEventKeyMotion k == Released) &&

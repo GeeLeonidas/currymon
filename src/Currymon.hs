@@ -125,15 +125,12 @@ mainBattleScene content = Scene sDraws fDraws
         ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
       ]
 
-data SceneFSM = MainBattle String | MoveSelection (V2 CInt) | ItemSelection (V2 CInt)
+data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt)
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
-advanceFSM (MainBattle option) events = case option of
-  "Fight" -> if any eventIsActionRight events then MainBattle "Item" else MainBattle option
-  "Item" -> if any eventIsActionLeft events then MainBattle "Fight" else MainBattle option
-  _ -> MainBattle "Fight"
-
-advanceFSM (MoveSelection (V2 xIdx yIdx)) events = MoveSelection $ V2 newXIdx newYIdx
+advanceFSM (MainBattle (V2 xIdx yIdx)) events
+  | any eventIsActionConfirm events = if xIdx == 0 then MoveSelection (V2 0 0) else ItemSelection (V2 0 0)
+  | otherwise = MainBattle $ V2 newXIdx newYIdx
   where
     xipa = xIdx + xAction
     yipa = yIdx + yAction
@@ -148,7 +145,26 @@ advanceFSM (MoveSelection (V2 xIdx yIdx)) events = MoveSelection $ V2 newXIdx ne
       | any eventIsActionDown events = -1
       | otherwise                    =  0
 
-advanceFSM (ItemSelection (V2 _ idx)) events = ItemSelection $ V2 0 newIdx
+advanceFSM (MoveSelection (V2 xIdx yIdx)) events
+  | any eventIsActionBack events = MainBattle (V2 0 0)
+  | otherwise = MoveSelection $ V2 newXIdx newYIdx
+  where
+    xipa = xIdx + xAction
+    yipa = yIdx + yAction
+    newXIdx = min (max xipa 0) 1
+    newYIdx = min (max yipa 0) 1
+    xAction
+      | any eventIsActionRight events =  1
+      | any eventIsActionLeft events  = -1
+      | otherwise                     =  0
+    yAction
+      | any eventisActionUp events   =  1
+      | any eventIsActionDown events = -1
+      | otherwise                    =  0
+
+advanceFSM (ItemSelection (V2 _ idx)) events
+  | any eventIsActionBack events = MainBattle (V2 1 0)
+  | otherwise = ItemSelection $ V2 0 newIdx
   where
     ipa = idx + action
     newIdx = max ipa 0
@@ -187,6 +203,22 @@ eventIsActionDown event =
     KeyboardEvent k ->
       (keyboardEventKeyMotion k == Released) &&
       ((keysymScancode . keyboardEventKeysym) k == ScancodeDown)
+    _ -> False
+
+eventIsActionConfirm :: Event -> Bool
+eventIsActionConfirm event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeZ)
+    _ -> False
+
+eventIsActionBack :: Event -> Bool
+eventIsActionBack event =
+  case eventPayload event of
+    KeyboardEvent k ->
+      (keyboardEventKeyMotion k == Released) &&
+      ((keysymScancode . keyboardEventKeysym) k == ScancodeX)
     _ -> False
 
 eventIsExit :: Event -> Bool

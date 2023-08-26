@@ -98,6 +98,17 @@ puncture = Move "Puncture" "Rolls two d6's for damage" Scissors [d6, d6]
 crush :: Move
 crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
 
+data Monster = Monster {
+    monsterName     :: String
+  , healthPoints    :: CInt
+  , maxHealthPoints :: CInt
+  , knownMoves      :: V4 Move
+  }
+
+lomba :: Monster
+lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush)
+  where maxHP = 35
+
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
   , fontDraws   :: [(String, Color, Point V2 CInt, String)]

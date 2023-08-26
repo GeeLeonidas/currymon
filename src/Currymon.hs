@@ -68,6 +68,11 @@ roll :: Dice a -> Int -> a
 roll (Dice []) _ = error "No roll information for this Dice"
 roll (Dice xs) i = xs !! (i `mod` length xs)
 
+rollMultiple :: [Dice a] -> [Int] -> ([a], [Int])
+rollMultiple []     rand = ([], rand)
+rollMultiple (x:ys) rand = (roll x (head rand) : recurDamage, recurRand)
+  where (recurDamage, recurRand) = rollMultiple ys (tail rand)
+
 data MoveType = Rock | Paper | Scissors | Typeless
 data Move = Move {
     moveName  :: String
@@ -76,14 +81,9 @@ data Move = Move {
   , moveDices :: [Dice CInt]
   }
 
-rollMove :: Move -> [Int] -> (CInt, [Int])
-rollMove (Move _ _ _ [])     rand = (0, rand)
-rollMove (Move n d t (x:ys)) rand = (roll x (head rand) + recurDamage, recurRand)
-  where (recurDamage, recurRand) = rollMove (Move n d t ys) (tail rand)
-
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
-  , fontDraws :: [(String, Color, Point V2 CInt, String)]
+  , fontDraws   :: [(String, Color, Point V2 CInt, String)]
   }
 
 mainBattleScene :: String -> Scene

@@ -165,7 +165,7 @@ useItem item ally enemy rand = undefined -- TODO
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
-  , fontDraws   :: [(String, Color, Point V2 CInt, String)]
+  , fontDraws   :: [(String, Color, Point V2 CInt, String, Bool)]
   }
 
 mainBattleScene :: String -> Scene
@@ -176,7 +176,7 @@ mainBattleScene content = Scene sDraws fDraws
       , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
       ]
     fDraws = [
-        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content)
+        ("PublicPixel", V4 245 245 245 255, P $ gameRes * V2 0 1 + V2 4 (-20), content, True)
       ]
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
@@ -386,9 +386,11 @@ drawScene r f s hms hmf = do
     drawFonts renderer factor (Scene zs (x:ys)) fonts = do
       drawFonts renderer factor (Scene zs ys) fonts
       let
-        (key, color, pos@(P (V2 textX _)), content) = x
+        (key, color, pos@(P (V2 textX _)), content, shouldWrap) = x
         font = findWithDefault (error $ '\"' : key ++ "\" font is missing") key fonts
-      surface <- SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)
+      surface <- if shouldWrap
+        then SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)
+        else SDL.Font.solid font color (pack content)
       texture <- createTextureFromSurface renderer surface
       drawTexture renderer factor texture pos
       freeSurface surface

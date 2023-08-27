@@ -7,6 +7,7 @@ module Currymon (
   , gameRendererConfig
   , mainBattleScene
   , moveSelectionScene
+  , itemSelectionScene
   , battleDialogScene
   , Monster(..)
   , SceneFSM(..)
@@ -256,17 +257,17 @@ moveSelectionScene sel ally = Scene sDraws fDraws
 
 -- TODO
 itemSelectionScene :: Integral a => V2 a -> [Item] -> Scene
-itemSelectionScene sel items = Scene sDraws fDraws
+itemSelectionScene (V2 _ sel) items = Scene sDraws fDraws
   where
-    potionContent = (if sel == V2 0 0 then ">" else "") ++ "Potion"
-    buffContent = (if sel == V2 1 0 then ">" else "") ++ "Buff Attack"
+    itemCount = fromIntegral $ length items
+    content = [(if (sel `mod` itemCount) == i then ">" else "") ++ itemName item | (item, i) <- zip items [0..]]
     sDraws = [
         ("battle-concept1", P $ V2 10 60)
       , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
       ]
     fDraws = [
-        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), potionContent, False),
-        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, buffContent, False)
+        ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
+        | (curContent, i) <- zip content [0..]
       ]
 
 -- TODO
@@ -343,7 +344,7 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [] "" []
+initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [Item "Poçao" Potion, Item "Ataque" Buff] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =

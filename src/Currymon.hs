@@ -91,6 +91,10 @@ d6 = Dice [1,2,3,4,5,6]
 dCrazy :: Integral a => Dice a
 dCrazy = Dice [0,0,21]
 
+d6or0 :: Integral a => Dice a
+d6or0 = Dice [0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6]
+
+
 roll :: Dice a -> Int -> a
 roll (Dice []) _ = error "No roll information for this Dice"
 roll (Dice xs) i = xs !! (i `mod` length xs)
@@ -121,6 +125,9 @@ puncture = Move "Puncture" "Rolls two d6's for damage" Scissors [d6, d6]
 crush :: Move
 crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
 
+razorScarf :: Move
+razorScarf = Move "Razor Scarf" "Rolls four d6's, but each dice has a 50% chance of dealing 0 damage" Scissors [d6or0, d6or0, d6or0, d6or0]
+
 hasAdvantageOver :: Move -> Move -> Bool
 hasAdvantageOver (Move _ _ allyType _) (Move _ _ enemyType _) = case enemyType of
   Typeless -> allyType /= Typeless
@@ -139,6 +146,10 @@ data Monster = Monster {
 lomba :: Monster
 lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush) 0
   where maxHP = 35
+
+gaticol :: Monster
+gaticol = Monster "Gaticol" maxHP (v4 smack slit puncture crush) False
+  where maxHP = 30
 
 selectMove :: Int -> Monster -> Move
 selectMove i (Monster _ _ _ moves _) =

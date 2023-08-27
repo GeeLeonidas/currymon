@@ -258,8 +258,8 @@ advanceFSM (MoveSelection (V2 xIdx yIdx)) events
       | any eventIsActionLeft events  = -1
       | otherwise                     =  0
     yAction
-      | any eventIsActionUp events   =  1
-      | any eventIsActionDown events = -1
+      | any eventIsActionDown events   =  1
+      | any eventIsActionUp events = -1
       | otherwise                    =  0
 
 advanceFSM (ItemSelection (V2 _ idx)) events

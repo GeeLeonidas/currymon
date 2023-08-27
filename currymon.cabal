@@ -1,6 +1,6 @@
 name:                currymon
 version:             0.1.0.0
-synopsis:            A monster collecting game that incorporates lambda-calculus concepts
+synopsis:            A monster collecting game made using SDL2
 -- description:
 homepage:            https://github.com/GeeLeonidas/currymon
 license:             GPL3

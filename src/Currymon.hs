@@ -355,7 +355,7 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [Item "Poçao" Potion, Item "Ataque" Buff] "" []
+initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol gaticol [Item "Poçao" Potion, Item "Ataque" Buff] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -444,6 +444,10 @@ spritePaths :: [FilePath]
 spritePaths = [
     "./res/sprite/missing.png"
   , "./res/sprite/battle-concept1.png"
+  , "./res/sprite/gaticol-front.png"
+  , "./res/sprite/gaticol-back.png"
+  , "./res/sprite/lomba-front.png"
+  , "./res/sprite/lomba-back.png"
   ]
 
 fontPaths :: [FilePath]

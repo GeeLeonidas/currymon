@@ -4,6 +4,7 @@ module Currymon (
   , gameRes
   , renderScale
   , gameWindowConfig
+  , gameRendererConfig
   , mainBattleScene
   , moveSelectionScene
   , SceneFSM(..)
@@ -57,6 +58,18 @@ gameWindowConfig = WindowConfig {
   , windowGraphicsContext = NoGraphicsContext
   , windowBorder          = True
   }
+
+gameRendererConfig :: [RendererInfo] -> RendererConfig
+gameRendererConfig driverInfo
+  | all (== SoftwareRenderer) rendererTypes =
+    RendererConfig SoftwareRenderer False
+  | AcceleratedVSyncRenderer `elem` rendererTypes =
+    RendererConfig AcceleratedVSyncRenderer False
+  | AcceleratedRenderer `elem` rendererTypes =
+    RendererConfig AcceleratedRenderer False
+  | otherwise =
+    RendererConfig UnacceleratedRenderer False
+  where rendererTypes = rendererType . rendererInfoFlags <$> driverInfo
 
 newtype Dice a = Dice [a]
 instance Functor Dice where

@@ -18,7 +18,8 @@ main = do
   SDL.Font.initialize
 
   window <- createWindow (pack "Currymon") gameWindowConfig
-  renderer <- createRenderer window (-1) defaultRenderer
+  driverInfo <- getRenderDriverInfo
+  renderer <- createRenderer window (-1) (gameRendererConfig driverInfo)
   sprites <- loadSprites renderer spritePaths
   fonts <- loadFonts fontPaths 8
   tick <- ticks
@@ -42,7 +43,7 @@ appLoop window renderer sprites fonts state rand count = do
 
   rendererDrawColor renderer $= V4 255 255 255 255
   clear renderer
-  
+
   case fsm of
     MainBattle option -> draw $ mainBattleScene option
     MoveSelection option -> draw $ moveSelectionScene option ally

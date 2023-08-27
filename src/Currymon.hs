@@ -136,7 +136,7 @@ data Monster = Monster {
   }
 
 lomba :: Monster
-lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush)
+lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush) False
   where maxHP = 35
 
 selectMove :: Int -> Monster -> Move

@@ -37,7 +37,7 @@ appLoop window renderer sprites fonts state rand count = do
   events <- pollEvents
   let
     exiting = any eventIsExit events
-    newState@(BattleState fsm ally enemy items content messages) =
+    (newState@(BattleState fsm ally enemy items content messages), newRand) =
       updateBattleState state events rand count
 
   rendererDrawColor renderer $= V4 255 255 255 255
@@ -51,6 +51,6 @@ appLoop window renderer sprites fonts state rand count = do
   present renderer
 
   threadDelay 30000
-  unless exiting (appLoop window renderer sprites fonts newState (tail rand) (count + 1))
+  unless exiting (appLoop window renderer sprites fonts newState newRand (count + 1))
   where
     draw s = drawScene renderer renderScale s sprites fonts

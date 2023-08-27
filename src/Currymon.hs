@@ -273,24 +273,28 @@ data BattleState = BattleState {
 initialBattleState :: BattleState
 initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [] "" []
 
-updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> BattleState
+updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState (MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand count = undefined
+  where
+    idx = fromIntegral $ xIdx + yIdx
+    (newAlly, newEnemy, newRand) = useMove idx ally enemy rand
+
 updateBattleState (BattleState (ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count = undefined
 
-updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) events _ count
+updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) events rand count
   | any eventIsActionConfirm events = if content == x
     then ini "" ys
     else ini x (x:ys)
   | otherwise = if content /= x && count `mod` 8 == 0
     then ini (take (length content + 1) x) (x:ys)
     else ini content (x:ys)
-  where ini = BattleState BattleDialog ally enemy items
+  where ini c m = (BattleState BattleDialog ally enemy items c m, rand)
 
-updateBattleState (BattleState BattleDialog ally enemy items _ []) _ _ _ =
-  BattleState (MainBattle $ V2 0 0) ally enemy items "" []
+updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ =
+  (BattleState (MainBattle $ V2 0 0) ally enemy items "" [], rand)
 
-updateBattleState (BattleState fsm ally enemy items content messages) events _ _ =
-  BattleState (advanceFSM fsm events) ally enemy items content messages
+updateBattleState (BattleState fsm ally enemy items content messages) events rand _ =
+  (BattleState (advanceFSM fsm events) ally enemy items content messages, rand)
 
 eventIsActionLeft :: Event -> Bool
 eventIsActionLeft event =

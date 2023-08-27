@@ -135,8 +135,8 @@ receiveMultipleDamage :: Monster -> [CInt] -> Monster
 receiveMultipleDamage (Monster n hp mhp kms) ds = Monster n (min newHP 0) mhp kms
   where newHP = Prelude.foldl (-) hp ds
 
-useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [Int])
-useMove idx ally enemy rand = (finalAlly, finalEnemy, finalRand)
+useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
+useMove idx ally enemy rand = (finalAlly, finalEnemy, messages, finalRand)
   where
     allyMove = selectMove idx ally
     enemyMove = selectMove (head rand) enemy
@@ -162,6 +162,21 @@ useMove idx ally enemy rand = (finalAlly, finalEnemy, finalRand)
           receiveMultipleDamage newAlly newEnemyDamages
         , receiveMultipleDamage newEnemy newAllyDamages
         )
+    messages = (if diff >= 0 then id else reverse) [
+        monsterName ally ++ if healthPoints newAlly > 0
+          then
+            " rolled " ++ if healthPoints newEnemy > 0
+              then show allyDamages ++ "!"
+              else show (take diff allyDamages) ++ " first!"
+          else " fainted!"
+      , monsterName enemy ++ if healthPoints newEnemy > 0
+          then
+            " rolled " ++ if healthPoints newAlly > 0
+              then show enemyDamages ++ "!"
+              else show (take (-diff) enemyDamages) ++ " first!"
+          else " fainted!"
+      ] ++ [monsterName ally ++ " fainted!" | healthPoints newAlly > 0 && healthPoints finalAlly <= 0]
+       ++ [monsterName enemy ++ " fainted!" | healthPoints newEnemy > 0 && healthPoints finalEnemy <= 0]
 
 data Item -- TODO
 
@@ -274,10 +289,16 @@ initialBattleState :: BattleState
 initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
-updateBattleState (BattleState (MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand count = undefined
+updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
+  (newBattleState, newRand)
   where
+    newBattleState = case newFSM of
+      BattleDialog -> BattleState newFSM newAlly newEnemy items "" newMessages
+      _ -> BattleState newFSM ally enemy items content messages
+    newFSM = advanceFSM fsm events
     idx = fromIntegral $ xIdx + yIdx
-    (newAlly, newEnemy, newRand) = useMove idx ally enemy rand
+    (newAlly, newEnemy, newMessages, newRand) = useMove idx ally enemy rand
+
 
 updateBattleState (BattleState (ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count = undefined
 

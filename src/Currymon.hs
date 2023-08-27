@@ -129,6 +129,7 @@ data Monster = Monster {
   , healthPoints    :: CInt
   , maxHealthPoints :: CInt
   , knownMoves      :: V4 Move
+  , buffed          :: Bool
   }
 
 lomba :: Monster
@@ -191,10 +192,18 @@ useMove idx ally enemy rand = (finalAlly, finalEnemy, messages, finalRand)
       ] ++ [monsterName ally ++ " fainted!" | healthPoints newAlly > 0 && healthPoints finalAlly <= 0]
        ++ [monsterName enemy ++ " fainted!" | healthPoints newEnemy > 0 && healthPoints finalEnemy <= 0]
 
-data Item -- TODO
+data ItemType = Potion | Buff
+  deriving Eq
 
-useItem :: Item -> Monster -> Monster -> [Int] -> (Monster, Monster, [Int])
-useItem item ally enemy rand = undefined -- TODO
+data Item = Item {
+    itemName  :: String
+  , itemtype  :: ItemType
+  }
+
+useItem :: Item -> Monster -> Monster -> (Monster, Monster)
+useItem item ally enemy | itemtype item == Potion = (healedAlly, enemy)
+  where
+    healedAlly = ally { healthPoints = min (healthPoints ally + 15) (maxHealthPoints ally) }
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
@@ -238,8 +247,19 @@ moveSelectionScene sel ally = Scene sDraws fDraws
       ]
 
 -- TODO
-itemSelectionScene :: Integral a => a -> [Item] -> Scene
-itemSelectionScene = undefined
+itemSelectionScene :: Integral a => V2 a -> [Item] -> Scene
+itemSelectionScene sel = Scene sDraws fDraws
+  where
+    potionContent = (if sel == V2 0 0 then ">" else "") ++ "Potion"
+    buffContent = (if sel == V2 1 0 then ">" else "") ++ "Buff Attack"
+    sDraws = [
+        ("battle-concept1", P $ V2 10 60)
+      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
+      ]
+    fDraws = [
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), potionContent, False),
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, buffContent, False)
+      ]
 
 -- TODO
 battleDialogScene :: String -> Scene

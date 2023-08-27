@@ -47,6 +47,7 @@ appLoop window renderer sprites fonts state rand count = do
   case fsm of
     MainBattle option -> draw $ mainBattleScene option
     MoveSelection option -> draw $ moveSelectionScene option ally
+    BattleDialog -> draw $ battleDialogScene (healthPoints ally) content
     _ -> pure ()
 
   present renderer

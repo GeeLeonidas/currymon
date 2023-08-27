@@ -7,6 +7,8 @@ module Currymon (
   , gameRendererConfig
   , mainBattleScene
   , moveSelectionScene
+  , battleDialogScene
+  , Monster(..)
   , SceneFSM(..)
   , BattleState(..)
   , initialBattleState
@@ -32,6 +34,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.HashMap.Strict
 import System.FilePath
 import Data.Text (pack)
+import qualified Debug.Trace as Debug
 
 
 gameWidth :: Integral a => a
@@ -146,8 +149,8 @@ selectMove i (Monster _ _ _ moves) =
     _ -> undefined
 
 receiveMultipleDamage :: Monster -> [CInt] -> Monster
-receiveMultipleDamage (Monster n hp mhp kms) ds = Monster n (min newHP 0) mhp kms
-  where newHP = Prelude.foldl (-) hp ds
+receiveMultipleDamage (Monster n hp mhp kms) ds = Monster n (max newHP 0) mhp kms
+  where newHP = hp - sum ds
 
 useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
 useMove idx ally enemy rand = (finalAlly, finalEnemy, messages, finalRand)
@@ -177,20 +180,20 @@ useMove idx ally enemy rand = (finalAlly, finalEnemy, messages, finalRand)
         , receiveMultipleDamage newEnemy newAllyDamages
         )
     messages = (if diff >= 0 then id else reverse) [
-        monsterName ally ++ if healthPoints newAlly > 0
+        "Ally " ++ monsterName ally ++ if healthPoints newAlly > 0
           then
             " rolled " ++ if healthPoints newEnemy > 0
               then show allyDamages ++ "!"
               else show (take diff allyDamages) ++ " first!"
           else " fainted!"
-      , monsterName enemy ++ if healthPoints newEnemy > 0
+      , "Enemy " ++ monsterName enemy ++ if healthPoints newEnemy > 0
           then
             " rolled " ++ if healthPoints newAlly > 0
               then show enemyDamages ++ "!"
               else show (take (-diff) enemyDamages) ++ " first!"
           else " fainted!"
-      ] ++ [monsterName ally ++ " fainted!" | healthPoints newAlly > 0 && healthPoints finalAlly <= 0]
-       ++ [monsterName enemy ++ " fainted!" | healthPoints newEnemy > 0 && healthPoints finalEnemy <= 0]
+      ] ++ ["Ally " ++ monsterName ally ++ " fainted!" | healthPoints newAlly > 0 && healthPoints finalAlly <= 0]
+       ++ ["Enemy " ++ monsterName enemy ++ " fainted!" | healthPoints newEnemy > 0 && healthPoints finalEnemy <= 0]
 
 data ItemType = Potion | Buff
   deriving Eq
@@ -262,8 +265,16 @@ itemSelectionScene sel = Scene sDraws fDraws
       ]
 
 -- TODO
-battleDialogScene :: String -> Scene
-battleDialogScene = undefined
+battleDialogScene :: CInt -> String -> Scene
+battleDialogScene allyHP content = Scene sDraws fDraws
+  where
+    sDraws = [
+        ("battle-concept1", P $ V2 10 60)
+      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
+      ]
+    fDraws = [
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
+      ]
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 
@@ -347,7 +358,7 @@ updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) eve
   | any eventIsActionConfirm events = if content == x
     then ini "" ys
     else ini x (x:ys)
-  | otherwise = if content /= x && count `mod` 8 == 0
+  | otherwise = if content /= x && even count
     then ini (take (length content + 1) x) (x:ys)
     else ini content (x:ys)
   where ini c m = (BattleState BattleDialog ally enemy items c m, rand)
@@ -485,7 +496,8 @@ drawScene r f s hms hmf = do
     drawFonts renderer factor (Scene zs (x:ys)) fonts = do
       drawFonts renderer factor (Scene zs ys) fonts
       let
-        (key, color, pos@(P (V2 textX _)), content, shouldWrap) = x
+        (key, color, pos@(P (V2 textX _)), rawContent, shouldWrap) = x
+        content = if Prelude.null rawContent then " " else rawContent 
         font = findWithDefault (error $ '\"' : key ++ "\" font is missing") key fonts
       surface <- if shouldWrap
         then SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)

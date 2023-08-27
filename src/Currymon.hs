@@ -132,15 +132,15 @@ data Monster = Monster {
   , healthPoints    :: CInt
   , maxHealthPoints :: CInt
   , knownMoves      :: V4 Move
-  , buffed          :: Bool
+  , buffedTurns     :: Int
   }
 
 lomba :: Monster
-lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush) False
+lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush) 0
   where maxHP = 35
 
 selectMove :: Int -> Monster -> Move
-selectMove i (Monster _ _ _ moves) =
+selectMove i (Monster _ _ _ moves _) =
   case i `mod` 4 of
     0 -> let (V4 r _ _ _) = moves in r
     1 -> let (V4 _ r _ _) = moves in r
@@ -149,18 +149,23 @@ selectMove i (Monster _ _ _ moves) =
     _ -> undefined
 
 receiveMultipleDamage :: Monster -> [CInt] -> Monster
-receiveMultipleDamage (Monster n hp mhp kms) ds = Monster n (max newHP 0) mhp kms
+receiveMultipleDamage (Monster n hp mhp kms bt) ds = Monster n (max newHP 0) mhp kms bt
   where newHP = hp - sum ds
 
+decreaseBuff :: Monster -> Monster
+decreaseBuff (Monster n hp mhp kms bt) = Monster n hp mhp kms $ max (bt - 1) 0
+
 useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
-useMove idx ally enemy rand = (finalAlly, finalEnemy, messages, finalRand)
+useMove idx ally enemy rand = (decreaseBuff finalAlly, decreaseBuff finalEnemy, messages, finalRand)
   where
     allyMove = selectMove idx ally
     enemyMove = selectMove (head rand) enemy
     (allyDamagesWoBuff, newRand) = rollMultiple (moveDices allyMove) (tail rand)
     (enemyDamagesWoBuff, finalRand) = rollMultiple (moveDices enemyMove) newRand
-    allyBuff = ((if allyMove `hasAdvantageOver` enemyMove then 2 else 1)*)
-    enemyBuff = ((if enemyMove `hasAdvantageOver` allyMove then 2 else 1)*)
+    allyMoveBuff = ((if allyMove `hasAdvantageOver` enemyMove then 2 else 1)*)
+    enemyMoveBuff = ((if enemyMove `hasAdvantageOver` allyMove then 2 else 1)*)
+    allyBuff = allyMoveBuff . ((if buffedTurns ally > 0 then 2 else 1)*)
+    enemyBuff = enemyMoveBuff . ((if buffedTurns enemy > 0 then 2 else 1)*)
     allyDamages = allyBuff <$> allyDamagesWoBuff
     enemyDamages = enemyBuff <$> enemyDamagesWoBuff
     diff = length allyDamages - length enemyDamages

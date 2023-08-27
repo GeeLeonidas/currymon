@@ -256,7 +256,7 @@ moveSelectionScene sel ally = Scene sDraws fDraws
 
 -- TODO
 itemSelectionScene :: Integral a => V2 a -> [Item] -> Scene
-itemSelectionScene sel = Scene sDraws fDraws
+itemSelectionScene sel items = Scene sDraws fDraws
   where
     potionContent = (if sel == V2 0 0 then ">" else "") ++ "Potion"
     buffContent = (if sel == V2 1 0 then ">" else "") ++ "Buff Attack"

@@ -35,6 +35,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Data.HashMap.Strict
 import System.FilePath
 import Data.Text (pack)
+import qualified Data.List
 import qualified Debug.Trace as Debug
 
 
@@ -212,18 +213,22 @@ useMove idx ally enemy rand = (decreaseBuff finalAlly, decreaseBuff finalEnemy, 
       ] ++ ["Ally " ++ monsterName ally ++ " fainted!" | healthPoints newAlly > 0 && healthPoints finalAlly <= 0]
        ++ ["Enemy " ++ monsterName enemy ++ " fainted!" | healthPoints newEnemy > 0 && healthPoints finalEnemy <= 0]
 
-data ItemType = Potion | Buff
+data ItemEffect = Potion CInt | Buff Int
   deriving Eq
 
 data Item = Item {
-    itemName  :: String
-  , itemtype  :: ItemType
+    itemName   :: String
+  , itemEffect :: ItemEffect
   }
+  deriving Eq
 
-useItem :: Item -> Monster -> Monster -> (Monster, Monster)
-useItem item ally enemy | itemtype item == Potion = (healedAlly, enemy)
+useItem :: Item -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
+useItem item ally enemy rand = case itemEffect item of
+  Potion heal -> (healAlly heal, enemy, ["Heal"], rand)
+  Buff turns -> (buffAlly turns, enemy, ["Buff"], rand)
   where
-    healedAlly = ally { healthPoints = min (healthPoints ally + 15) (maxHealthPoints ally) }
+    healAlly h = ally { healthPoints = healthPoints ally + h }
+    buffAlly t = ally { buffedTurns = t }
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt)]
@@ -339,8 +344,8 @@ advanceFSM (ItemSelection (V2 _ idx)) events
     ipa = idx + action
     newIdx = max ipa 0
     action
-      | any eventIsActionUp events   =  1
-      | any eventIsActionDown events = -1
+      | any eventIsActionDown events   =  1
+      | any eventIsActionUp events = -1
       | otherwise                    =  0
 
 advanceFSM BattleDialog _ = BattleDialog
@@ -355,7 +360,7 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol gaticol [Item "Poçao" Potion, Item "Ataque" Buff] "" []
+initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [Item "Potion" (Potion 15), Item "Attack" (Buff 2)] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -369,7 +374,16 @@ updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy ite
     (newAlly, newEnemy, newMessages, newRand) = useMove idx ally enemy rand
 
 -- TODO: Create `data Item`
-updateBattleState (BattleState (ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count = undefined
+updateBattleState (BattleState fsm@(ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count =
+  (newBattleState, newRand)
+  where
+    itemCount = fromIntegral $ length items
+    item = items !! fromIntegral (idx `mod` itemCount)
+    newBattleState = case newFSM of
+      BattleDialog -> BattleState newFSM newAlly newEnemy (Data.List.delete item items) "" newMessages
+      _ -> BattleState newFSM ally enemy items content messages
+    newFSM = advanceFSM fsm events
+    (newAlly, newEnemy, newMessages, newRand) = useItem item ally enemy rand
 
 updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) events rand count
   | any eventIsActionConfirm events = if content == x
@@ -518,7 +532,7 @@ drawScene r f s hms hmf = do
       drawFonts renderer factor (Scene zs ys) fonts
       let
         (key, color, pos@(P (V2 textX _)), rawContent, shouldWrap) = x
-        content = if Prelude.null rawContent then " " else rawContent 
+        content = if Prelude.null rawContent then " " else rawContent
         font = findWithDefault (error $ '\"' : key ++ "\" font is missing") key fonts
       surface <- if shouldWrap
         then SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)

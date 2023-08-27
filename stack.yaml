@@ -22,7 +22,6 @@ resolver:
 allow-newer: true
 
 nix:
-  enable: true
   packages: [
     pkgconfig
   , SDL2

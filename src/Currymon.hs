@@ -224,6 +224,14 @@ moveSelectionScene sel ally = Scene sDraws fDraws
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, moveFourContent, False)
       ]
 
+-- TODO
+itemSelectionScene :: Integral a => a -> [Item] -> Scene
+itemSelectionScene = undefined
+
+-- TODO
+battleDialogScene :: String -> Scene
+battleDialogScene = undefined
+
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
@@ -299,7 +307,7 @@ updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy ite
     idx = fromIntegral $ xIdx + yIdx
     (newAlly, newEnemy, newMessages, newRand) = useMove idx ally enemy rand
 
-
+-- TODO: Create `data Item`
 updateBattleState (BattleState (ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count = undefined
 
 updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) events rand count

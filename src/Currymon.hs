@@ -37,6 +37,7 @@ import System.FilePath
 import Data.Text (pack)
 import qualified Data.List
 import qualified Debug.Trace as Debug
+import Data.Char (toLower)
 
 
 gameWidth :: Integral a => a
@@ -127,7 +128,7 @@ crush :: Move
 crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
 
 razorScarf :: Move
-razorScarf = Move "Razor Scarf" "Rolls four d6's, but each dice has a 50% chance of dealing 0 damage" Scissors [d6or0, d6or0, d6or0, d6or0]
+razorScarf = Move "Razor" "Rolls four d6's, but each dice has a 50% chance of dealing 0 damage" Scissors [d6or0, d6or0, d6or0, d6or0]
 
 hasAdvantageOver :: Move -> Move -> Bool
 hasAdvantageOver (Move _ _ allyType _) (Move _ _ enemyType _) = case enemyType of
@@ -149,7 +150,7 @@ lomba = Monster "Lomba" maxHP maxHP (V4 smack slit puncture crush) 0
   where maxHP = 35
 
 gaticol :: Monster
-gaticol = Monster "Gaticol" maxHP (v4 smack slit puncture crush) False
+gaticol = Monster "Gaticol" maxHP maxHP (V4 smack slit razorScarf crush) 0
   where maxHP = 30
 
 selectMove :: Int -> Monster -> Move
@@ -235,65 +236,98 @@ data Scene = Scene {
   , fontDraws   :: [(String, Color, Point V2 CInt, String, Bool)]
   }
 
-mainBattleScene :: Integral a => V2 a -> Scene
-mainBattleScene sel = Scene sDraws fDraws
+spriteDrawsMonsters :: Monster -> Monster -> [(String, Point V2 CInt)]
+spriteDrawsMonsters ally enemy = [
+    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 10 60)
+  , (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ gameRes * V2 1 0 + V2 (-60) 10)
+  ]
+
+fontDrawsMonsterNames :: Monster -> Monster -> [(String, Color, Point V2 CInt, String, Bool)]
+fontDrawsMonsterNames ally enemy = [
+  ("PublicPixel", V4 0 0 0 255, P $ V2 60 60, monsterName ally, False)
+  ,("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 0 + V2 (-150) 10, monsterName enemy, False)
+  ]
+
+spriteDrawsHP :: Monster -> Monster -> [(String, Point V2 CInt)]
+spriteDrawsHP ally enemy = [ 
+  ("HpBarEnd", P $ V2 60 70 )
+  , ("HpBarEnd", P $ gameRes * V2 1 0 + V2 (-150) 20)
+  ] ++ 
+  whiteBarPos ally enemy ++ 
+  [ 
+  (chooseHPBar ally, P $ V2 60 70 )
+  , (chooseHPBar enemy, P $ gameRes * V2 1 0 + V2 (-150) 20)
+  ]
+
+whiteBarPos :: Monster -> Monster -> [(String, Point V2 CInt)]
+whiteBarPos ally enemy = [
+  ("HpBarW", P $ V2 (60 + percToPos ally) 70 )
+  , ("HpBarW", P $ gameRes * V2 1 0 + V2 ((-150) + percToPos enemy) 20)
+  ]
+  where
+    percToPos :: Monster -> CInt
+    percToPos m = round $ 52 * hpPercentage m
+
+hpPercentage :: Monster -> Float
+hpPercentage m = fromIntegral (healthPoints m) / fromIntegral (maxHealthPoints m)
+
+chooseHPBar :: Monster -> String
+chooseHPBar m | hpPercentage m <= 0.20 = "HpBarR"
+              | hpPercentage m <= 0.40 = "HpBarY"
+              | otherwise              = "HpBarG"
+
+
+
+
+
+mainBattleScene :: Integral a => V2 a -> Monster -> Monster -> Scene
+mainBattleScene sel ally enemy = Scene sDraws fDraws
   where
     fightContent = (if sel == V2 0 0 then ">" else "") ++ "Fight"
     itemContent = (if sel == V2 1 0 then ">" else "") ++ "Item"
     monsterContent = (if sel == V2 0 1 then ">" else "") ++ "Monster"
     runContent = (if sel == V2 1 1 then ">" else "") ++ "Run"
-    sDraws = [
-        ("battle-concept1", P $ V2 10 60)
-      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
-      ]
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), fightContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, itemContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), monsterContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, runContent, False)
-      ]
+      ] ++ fontDrawsMonsterNames ally enemy
 
-moveSelectionScene :: Integral a => V2 a -> Monster -> Scene
-moveSelectionScene sel ally = Scene sDraws fDraws
+
+moveSelectionScene :: Integral a => V2 a -> Monster -> Monster -> Scene
+moveSelectionScene sel ally enemy = Scene sDraws fDraws
   where
     moveOneContent = (if sel == V2 0 0 then ">" else "") ++ moveName (selectMove 0 ally)
     moveTwoContent = (if sel == V2 1 0 then ">" else "") ++ moveName (selectMove 1 ally)
     moveThreeContent = (if sel == V2 0 1 then ">" else "") ++ moveName (selectMove 2 ally)
     moveFourContent = (if sel == V2 1 1 then ">" else "") ++ moveName (selectMove 3 ally)
-    sDraws = [
-        ("battle-concept1", P $ V2 10 60)
-      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
-      ]
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), moveOneContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, moveTwoContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), moveThreeContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, moveFourContent, False)
-      ]
+      ] ++ fontDrawsMonsterNames ally enemy
 
 -- TODO
-itemSelectionScene :: Integral a => V2 a -> [Item] -> Scene
-itemSelectionScene (V2 _ sel) items = Scene sDraws fDraws
+itemSelectionScene :: Integral a => V2 a -> Monster -> Monster -> [Item] -> Scene
+itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
   where
     itemCount = fromIntegral $ length items
     content = [(if (sel `mod` itemCount) == i then ">" else "") ++ itemName item | (item, i) <- zip items [0..]]
-    sDraws = [
-        ("battle-concept1", P $ V2 10 60)
-      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
-      ]
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
         | (curContent, i) <- zip content [0..]
-      ]
+      ] ++ fontDrawsMonsterNames ally enemy
 
 -- TODO
-battleDialogScene :: CInt -> String -> Scene
-battleDialogScene allyHP content = Scene sDraws fDraws
+battleDialogScene :: CInt -> String -> Monster -> Monster -> Scene
+battleDialogScene allyHP content ally enemy = Scene sDraws fDraws
   where
-    sDraws = [
-        ("battle-concept1", P $ V2 10 60)
-      , ("battle-concept1", P $ gameRes * V2 1 0 + V2 (-60) 10)
-      ]
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
       ]
@@ -360,7 +394,7 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) lomba lomba [Item "Potion" (Potion 15), Item "Attack" (Buff 2)] "" []
+initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol gaticol [Item "Potion" (Potion 15), Item "Attack" (Buff 2)] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -460,8 +494,14 @@ spritePaths = [
   , "./res/sprite/battle-concept1.png"
   , "./res/sprite/gaticol-front.png"
   , "./res/sprite/gaticol-back.png"
-  , "./res/sprite/lomba-front.png"
-  , "./res/sprite/lomba-back.png"
+  , "./res/sprite/HpBarG.png"
+  , "./res/sprite/HpBarR.png"
+  , "./res/sprite/HpBarY.png"
+  , "./res/sprite/HpBarW.png"
+  , "./res/sprite/HpBarEnd.png"
+
+  --, "./res/sprite/lomba-front.png"
+  --, "./res/sprite/lomba-back.png"
   ]
 
 fontPaths :: [FilePath]

@@ -19,7 +19,8 @@ main = do
 
   window <- createWindow (pack "Currymon") gameWindowConfig
   driverInfo <- getRenderDriverInfo
-  renderer <- createRenderer window (-1) (gameRendererConfig driverInfo)
+  --print driverInfo
+  renderer <- createRenderer window (-1) (RendererConfig SoftwareRenderer False)
   sprites <- loadSprites renderer spritePaths
   fonts <- loadFonts fontPaths 8
   tick <- ticks
@@ -45,10 +46,10 @@ appLoop window renderer sprites fonts state rand count = do
   clear renderer
 
   case fsm of
-    MainBattle option -> draw $ mainBattleScene option
-    MoveSelection option -> draw $ moveSelectionScene option ally
-    ItemSelection option -> draw $ itemSelectionScene option items
-    BattleDialog -> draw $ battleDialogScene (healthPoints ally) content
+    MainBattle option -> draw $ mainBattleScene option ally enemy
+    MoveSelection option -> draw $ moveSelectionScene option ally enemy
+    ItemSelection option -> draw $ itemSelectionScene option ally enemy items
+    BattleDialog -> draw $ battleDialogScene (healthPoints ally) content ally enemy
 
   present renderer
 
@@ -56,3 +57,6 @@ appLoop window renderer sprites fonts state rand count = do
   unless exiting (appLoop window renderer sprites fonts newState newRand (count + 1))
   where
     draw s = drawScene renderer renderScale s sprites fonts
+
+  {-
+  -}

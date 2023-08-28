@@ -237,14 +237,14 @@ useItem item ally enemy rand = case itemEffect item of
     buffAlly t = ally { buffedTurns = t }
 
 data Scene = Scene {
-    spriteDraws :: [(String, Point V2 CInt)]
+    spriteDraws :: [(String, Point V2 CInt, CInt -> CInt)]
   , fontDraws   :: [(String, Color, Point V2 CInt, String, Bool)]
   }
 
-spriteDrawsMonsters :: Monster -> Monster -> [(String, Point V2 CInt)]
+spriteDrawsMonsters :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 spriteDrawsMonsters ally enemy = [
-    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 10 60)
-  , (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ gameRes * V2 1 0 + V2 (-60) 10)
+    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 10 60, (2*))
+  , (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ gameRes * V2 1 0 + V2 (-60) 10, id)
   ]
 
 fontDrawsMonsterNames :: Monster -> Monster -> [(String, Color, Point V2 CInt, String, Bool)]
@@ -253,21 +253,21 @@ fontDrawsMonsterNames ally enemy = [
   ,("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 0 + V2 (-150) 10, monsterName enemy, False)
   ]
 
-spriteDrawsHP :: Monster -> Monster -> [(String, Point V2 CInt)]
+spriteDrawsHP :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 spriteDrawsHP ally enemy = [ 
-  ("HpBarEnd", P $ V2 60 70 )
-  , ("HpBarEnd", P $ gameRes * V2 1 0 + V2 (-150) 20)
+  ("HpBarEnd", P $ V2 60 70, id)
+  , ("HpBarEnd", P $ gameRes * V2 1 0 + V2 (-150) 20, id)
   ] ++ 
   whiteBarPos ally enemy ++ 
   [ 
-  (chooseHPBar ally, P $ V2 60 70 )
-  , (chooseHPBar enemy, P $ gameRes * V2 1 0 + V2 (-150) 20)
+  (chooseHPBar ally, P $ V2 60 70, id)
+  , (chooseHPBar enemy, P $ gameRes * V2 1 0 + V2 (-150) 20, id)
   ]
 
-whiteBarPos :: Monster -> Monster -> [(String, Point V2 CInt)]
+whiteBarPos :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 whiteBarPos ally enemy = [
-  ("HpBarW", P $ V2 (60 + percToPos ally) 70 )
-  , ("HpBarW", P $ gameRes * V2 1 0 + V2 ((-150) + percToPos enemy) 20)
+  ("HpBarW", P $ V2 (60 + percToPos ally) 70, id)
+  , ("HpBarW", P $ gameRes * V2 1 0 + V2 ((-150) + percToPos enemy) 20, id)
   ]
   where
     percToPos :: Monster -> CInt
@@ -293,7 +293,7 @@ mainBattleScene sel ally enemy = Scene sDraws fDraws
     monsterContent = (if sel == V2 0 1 then ">" else "") ++ "Monster"
     runContent = (if sel == V2 1 1 then ">" else "") ++ "Run"
     sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
-      [ ("Moldura", P $ V2 0 0) ]
+      [ ("Moldura", P $ V2 0 0, id) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), fightContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, itemContent, False),
@@ -310,7 +310,7 @@ moveSelectionScene sel ally enemy = Scene sDraws fDraws
     moveThreeContent = (if sel == V2 0 1 then ">" else "") ++ moveName (selectMove 2 ally)
     moveFourContent = (if sel == V2 1 1 then ">" else "") ++ moveName (selectMove 3 ally)
     sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++ 
-      [ ("Moldura", P $ V2 0 0) ]
+      [ ("Moldura", P $ V2 0 0, id) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), moveOneContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, moveTwoContent, False),
@@ -325,7 +325,7 @@ itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
     itemCount = fromIntegral $ length items
     content = [(if (sel `mod` itemCount) == i then ">" else "") ++ itemName item | (item, i) <- zip items [0..]]
     description = [(if (sel `mod` itemCount) == i then itemDescription item else "")| (item, i) <- zip items [0..]]
-    sDraws = [("MolduraItem", P $ V2 0 0)] ++ spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
+    sDraws = [("MolduraItem", P $ V2 0 0, id)] ++ spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
         | (curContent, i) <- zip content [0..]
@@ -340,7 +340,7 @@ battleDialogScene :: CInt -> String -> Monster -> Monster -> Scene
 battleDialogScene allyHP content ally enemy = Scene sDraws fDraws
   where
     sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
-      [ ("Moldura", P $ V2 0 0) ]
+      [ ("Moldura", P $ V2 0 0, id) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
       ] ++ fontDrawsMonsterNames ally enemy
@@ -564,10 +564,10 @@ textureBounds :: MonadIO m => Texture -> m (V2 CInt)
 textureBounds t = bounds <$> queryTexture t
   where bounds info = V2 (textureWidth info) (textureHeight info)
 
-drawTexture :: MonadIO m => Renderer -> (CInt -> CInt) -> Texture -> Point V2 CInt -> m ()
-drawTexture r f t p = do
+drawTexture :: MonadIO m => Renderer -> (CInt -> CInt) -> (CInt -> CInt) -> Texture -> Point V2 CInt -> m ()
+drawTexture r f g t p = do
   tb <- textureBounds t
-  copy r t Nothing $ Just $ f <$> Rectangle p tb
+  copy r t Nothing $ Just $ f <$> Rectangle p (g <$> tb)
 
 drawScene :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Texture -> HashMap String Font -> m ()
 drawScene r f s hms hmf = do
@@ -579,10 +579,10 @@ drawScene r f s hms hmf = do
     drawSprites renderer factor (Scene (x:ys) zs) sprites = do
       drawSprites renderer factor (Scene ys zs) sprites
       let
-        (key, pos) = x
+        (key, pos, sprScale) = x
         missingSprite = findWithDefault (error "\"missing\" sprite is missing") "missing" sprites
         currentSprite = findWithDefault missingSprite key sprites
-      drawTexture renderer factor currentSprite pos
+      drawTexture renderer factor sprScale currentSprite pos
     drawFonts :: MonadIO m => Renderer -> (CInt -> CInt) -> Scene -> HashMap String Font -> m ()
     drawFonts _        _      (Scene _  []    ) _     = do pure ()
     drawFonts renderer factor (Scene zs (x:ys)) fonts = do
@@ -595,6 +595,6 @@ drawScene r f s hms hmf = do
         then SDL.Font.blendedWrapped font color (gameWidth - 2 * fromIntegral textX) (pack content)
         else SDL.Font.solid font color (pack content)
       texture <- createTextureFromSurface renderer surface
-      drawTexture renderer factor texture pos
+      drawTexture renderer factor id texture pos
       freeSurface surface
       destroyTexture texture

@@ -153,6 +153,10 @@ gaticol :: Monster
 gaticol = Monster "Gaticol" maxHP maxHP (V4 smack slit razorScarf crush) 0
   where maxHP = 30
 
+serpada :: Monster
+serpada = Monster "Serpada" maxHP maxHP (V4 smack slit puncture crush) 0
+  where maxHP = 30
+
 selectMove :: Int -> Monster -> Move
 selectMove i (Monster _ _ _ moves _) =
   case i `mod` 4 of
@@ -220,6 +224,7 @@ data ItemEffect = Potion CInt | Buff Int
 data Item = Item {
     itemName   :: String
   , itemEffect :: ItemEffect
+  , itemDescription :: String
   }
   deriving Eq
 
@@ -287,7 +292,8 @@ mainBattleScene sel ally enemy = Scene sDraws fDraws
     itemContent = (if sel == V2 1 0 then ">" else "") ++ "Item"
     monsterContent = (if sel == V2 0 1 then ">" else "") ++ "Monster"
     runContent = (if sel == V2 1 1 then ">" else "") ++ "Run"
-    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
+      [ ("Moldura", P $ V2 0 0) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), fightContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, itemContent, False),
@@ -303,7 +309,8 @@ moveSelectionScene sel ally enemy = Scene sDraws fDraws
     moveTwoContent = (if sel == V2 1 0 then ">" else "") ++ moveName (selectMove 1 ally)
     moveThreeContent = (if sel == V2 0 1 then ">" else "") ++ moveName (selectMove 2 ally)
     moveFourContent = (if sel == V2 1 1 then ">" else "") ++ moveName (selectMove 3 ally)
-    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++ 
+      [ ("Moldura", P $ V2 0 0) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), moveOneContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, moveTwoContent, False),
@@ -317,20 +324,26 @@ itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
   where
     itemCount = fromIntegral $ length items
     content = [(if (sel `mod` itemCount) == i then ">" else "") ++ itemName item | (item, i) <- zip items [0..]]
-    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
+    description = [(if (sel `mod` itemCount) == i then itemDescription item else "")| (item, i) <- zip items [0..]]
+    sDraws = [("MolduraItem", P $ V2 0 0)] ++ spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
         | (curContent, i) <- zip content [0..]
-      ] ++ fontDrawsMonsterNames ally enemy
+      ] ++ 
+      [ ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), curDescription, False)
+      | (curDescription, i) <- zip description [0..]
+      ] 
+
 
 -- TODO
 battleDialogScene :: CInt -> String -> Monster -> Monster -> Scene
 battleDialogScene allyHP content ally enemy = Scene sDraws fDraws
   where
-    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
+    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
+      [ ("Moldura", P $ V2 0 0) ]
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
-      ]
+      ] ++ fontDrawsMonsterNames ally enemy
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
 
@@ -394,7 +407,7 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol gaticol [Item "Potion" (Potion 15), Item "Attack" (Buff 2)] "" []
+initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol serpada [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "Attack (+3 Dano)"] "" []
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -499,6 +512,10 @@ spritePaths = [
   , "./res/sprite/HpBarY.png"
   , "./res/sprite/HpBarW.png"
   , "./res/sprite/HpBarEnd.png"
+  , "./res/sprite/Moldura.png"
+  , "./res/sprite/MolduraItem.png"
+  , "./res/sprite/serpada-front.png"
+  , "./res/sprite/serpada-back.png"
 
   --, "./res/sprite/lomba-front.png"
   --, "./res/sprite/lomba-back.png"

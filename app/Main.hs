@@ -18,8 +18,6 @@ main = do
   SDL.Font.initialize
 
   window <- createWindow (pack "Currymon") gameWindowConfig
-  driverInfo <- getRenderDriverInfo
-  --print driverInfo
   renderer <- createRenderer window (-1) (RendererConfig SoftwareRenderer False)
   sprites <- loadSprites renderer spritePaths
   fonts <- loadFonts fontPaths 8

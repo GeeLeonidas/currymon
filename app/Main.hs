@@ -26,7 +26,7 @@ main = do
   tick <- ticks
 
   let rand = randoms $ mkStdGen $ fromIntegral tick
-  appLoop window renderer sprites fonts initialBattleState rand 0
+  appLoop window renderer sprites fonts (initialBattleState rand) rand 0
 
   freeFonts fonts
   destroySprites sprites
@@ -50,6 +50,7 @@ appLoop window renderer sprites fonts state rand count = do
     MoveSelection option -> draw $ moveSelectionScene option ally enemy
     ItemSelection option -> draw $ itemSelectionScene option ally enemy items
     BattleDialog -> draw $ battleDialogScene (healthPoints ally) content ally enemy
+    BattleEnd -> draw $ battleEndScene ally enemy
 
   present renderer
 

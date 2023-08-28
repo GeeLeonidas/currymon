@@ -24,6 +24,7 @@ module Currymon (
   , textureBounds
   , drawTexture
   , drawScene
+  , battleEndScene
   ) where
 
 import SDL
@@ -156,6 +157,9 @@ gaticol = Monster "Gaticol" maxHP maxHP (V4 smack slit razorScarf crush) 0
 serpada :: Monster
 serpada = Monster "Serpada" maxHP maxHP (V4 smack slit puncture crush) 0
   where maxHP = 30
+
+monsterList :: [Monster]
+monsterList = [lomba, gaticol, serpada]
 
 selectMove :: Int -> Monster -> Move
 selectMove i (Monster _ _ _ moves _) =
@@ -334,6 +338,16 @@ itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
       | (curDescription, i) <- zip description [0..]
       ] 
 
+battleEndScene :: Monster -> Monster -> Scene
+battleEndScene ally enemy | healthPoints enemy <= 0 = Scene sDrawsV fDrawsV
+                          | healthPoints ally <= 0 = Scene sDrawsD fDrawsD
+                          | otherwise = undefined
+  where
+    sDrawsV = [ (((Prelude.map toLower $ monsterName ally) ++ "-front"), P $ V2 64 56)]
+    sDrawsD = [ (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ V2 64 56)]
+    fDrawsV = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 40 (-40), "VICTORY!!!", True) ]
+    fDrawsD = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 44 (-40), "DEFEAT!!!", True) ]
+
 
 -- TODO
 battleDialogScene :: CInt -> String -> Monster -> Monster -> Scene
@@ -345,7 +359,7 @@ battleDialogScene allyHP content ally enemy = Scene sDraws fDraws
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
       ] ++ fontDrawsMonsterNames ally enemy
 
-data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog
+data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog | BattleEnd
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
 advanceFSM (MainBattle (V2 xIdx yIdx)) events
@@ -395,7 +409,10 @@ advanceFSM (ItemSelection (V2 _ idx)) events
       | any eventIsActionUp events = -1
       | otherwise                    =  0
 
+advanceFSM BattleEnd events = if any eventIsActionConfirm events then MainBattle (V2 0 0) else BattleEnd
+
 advanceFSM BattleDialog _ = BattleDialog
+
 
 data BattleState = BattleState {
     sceneFSM       :: SceneFSM
@@ -406,8 +423,11 @@ data BattleState = BattleState {
   , dialogMessages :: [String]
   }
 
-initialBattleState :: BattleState
-initialBattleState = BattleState (MainBattle $ V2 0 0) gaticol serpada [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "Attack (+3 Dano)"] "" []
+initialBattleState :: [Int] -> BattleState
+initialBattleState rand = BattleState (MainBattle $ V2 0 0) allyM enemyM [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "2x Dano por 2 Turnos"] "" []
+  where 
+    allyM = monsterList !! ((rand !! 0) `mod` 3)
+    enemyM = monsterList !! ((rand !! 1) `mod` 3)
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -441,8 +461,13 @@ updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) eve
     else ini content (x:ys)
   where ini c m = (BattleState BattleDialog ally enemy items c m, rand)
 
-updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ =
-  (BattleState (MainBattle $ V2 0 0) ally enemy items "" [], rand)
+updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ = 
+  if healthPoints ally <= 0 || healthPoints enemy <= 0
+  then (BattleState BattleEnd ally enemy items "" [], rand)
+  else (BattleState (MainBattle $ V2 0 0) ally enemy items "" [], rand)
+
+updateBattleState (BattleState BattleEnd ally enemy items content messages) events rand _ =
+  (BattleState (advanceFSM BattleEnd events) ally enemy items content messages, rand)  
 
 updateBattleState (BattleState fsm ally enemy items content messages) events rand _ =
   (BattleState (advanceFSM fsm events) ally enemy items content messages, rand)
@@ -516,6 +541,8 @@ spritePaths = [
   , "./res/sprite/MolduraItem.png"
   , "./res/sprite/serpada-front.png"
   , "./res/sprite/serpada-back.png"
+  , "./res/sprite/lomba-front.png"
+  , "./res/sprite/lomba-back.png"
 
   --, "./res/sprite/lomba-front.png"
   --, "./res/sprite/lomba-back.png"

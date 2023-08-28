@@ -247,30 +247,30 @@ data Scene = Scene {
 
 spriteDrawsMonsters :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 spriteDrawsMonsters ally enemy = [
-    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 10 60, (2*))
+    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 5 60, (2*))
   , (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ gameRes * V2 1 0 + V2 (-60) 10, id)
   ]
 
 fontDrawsMonsterNames :: Monster -> Monster -> [(String, Color, Point V2 CInt, String, Bool)]
 fontDrawsMonsterNames ally enemy = [
-  ("PublicPixel", V4 0 0 0 255, P $ V2 60 60, monsterName ally, False)
+  ("PublicPixel", V4 0 0 0 255, P $ V2 70 60, monsterName ally, False)
   ,("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 0 + V2 (-150) 10, monsterName enemy, False)
   ]
 
 spriteDrawsHP :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 spriteDrawsHP ally enemy = [ 
-  ("HpBarEnd", P $ V2 60 70, id)
+  ("HpBarEnd", P $ V2 70 70, id)
   , ("HpBarEnd", P $ gameRes * V2 1 0 + V2 (-150) 20, id)
   ] ++ 
   whiteBarPos ally enemy ++ 
   [ 
-  (chooseHPBar ally, P $ V2 60 70, id)
+  (chooseHPBar ally, P $ V2 70 70, id)
   , (chooseHPBar enemy, P $ gameRes * V2 1 0 + V2 (-150) 20, id)
   ]
 
 whiteBarPos :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 whiteBarPos ally enemy = [
-  ("HpBarW", P $ V2 (60 + percToPos ally) 70, id)
+  ("HpBarW", P $ V2 (70 + percToPos ally) 70, id)
   , ("HpBarW", P $ gameRes * V2 1 0 + V2 ((-150) + percToPos enemy) 20, id)
   ]
   where
@@ -334,7 +334,7 @@ itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
         ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
         | (curContent, i) <- zip content [0..]
       ] ++ 
-      [ ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), curDescription, False)
+      [ ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), curDescription, True)
       | (curDescription, i) <- zip description [0..]
       ] 
 
@@ -343,8 +343,8 @@ battleEndScene ally enemy | healthPoints enemy <= 0 = Scene sDrawsV fDrawsV
                           | healthPoints ally <= 0 = Scene sDrawsD fDrawsD
                           | otherwise = undefined
   where
-    sDrawsV = [ (((Prelude.map toLower $ monsterName ally) ++ "-front"), P $ V2 64 56)]
-    sDrawsD = [ (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ V2 64 56)]
+    sDrawsV = [ (((Prelude.map toLower $ monsterName ally) ++ "-front"), P $ V2 64 56, id)]
+    sDrawsD = [ (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ V2 64 56, id)]
     fDrawsV = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 40 (-40), "VICTORY!!!", True) ]
     fDrawsD = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 44 (-40), "DEFEAT!!!", True) ]
 
@@ -423,8 +423,8 @@ data BattleState = BattleState {
   , dialogMessages :: [String]
   }
 
-initialBattleState :: [Int] -> BattleState
-initialBattleState rand = BattleState (MainBattle $ V2 0 0) allyM enemyM [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "2x Dano por 2 Turnos"] "" []
+initialBattleState :: [Int] -> (BattleState, [Int])
+initialBattleState rand = (BattleState (MainBattle $ V2 0 0) allyM enemyM [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "2x Dano por 2 Turnos"] "" [], drop 2 rand)
   where 
     allyM = monsterList !! ((rand !! 0) `mod` 3)
     enemyM = monsterList !! ((rand !! 1) `mod` 3)
@@ -467,7 +467,10 @@ updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ =
   else (BattleState (MainBattle $ V2 0 0) ally enemy items "" [], rand)
 
 updateBattleState (BattleState BattleEnd ally enemy items content messages) events rand _ =
-  (BattleState (advanceFSM BattleEnd events) ally enemy items content messages, rand)  
+  case newFSM of
+    MainBattle _ -> (initialBattleState rand)
+    _ -> (BattleState newFSM ally enemy items content messages, rand)   
+  where newFSM = advanceFSM BattleEnd events
 
 updateBattleState (BattleState fsm ally enemy items content messages) events rand _ =
   (BattleState (advanceFSM fsm events) ally enemy items content messages, rand)

@@ -25,8 +25,12 @@ main = do
   fonts <- loadFonts fontPaths 8
   tick <- ticks
 
-  let rand = randoms $ mkStdGen $ fromIntegral tick
-  appLoop window renderer sprites fonts (initialBattleState rand) rand 0
+  let 
+    rand = randoms $ mkStdGen $ fromIntegral tick
+    (firstBattleState, newRand) = initialBattleState rand
+
+  appLoop window renderer sprites fonts firstBattleState newRand 0
+
 
   freeFonts fonts
   destroySprites sprites

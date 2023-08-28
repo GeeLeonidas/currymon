@@ -118,7 +118,7 @@ crush :: Move
 crush = Move "Crush" "Deals 21 damage, but misses 2/3 of the time" Typeless [dCrazy]
 
 razorScarf :: Move
-razorScarf = Move "Razor" "Rolls four d6's, but each dice has a 50% chance of dealing 0 damage" Scissors [d6or0, d6or0, d6or0, d6or0]
+razorScarf = Move "Razor" "Rolls four d6's, but each misses 1/2 of the time" Scissors [d6or0, d6or0, d6or0, d6or0]
 
 hasAdvantageOver :: Move -> Move -> Bool
 hasAdvantageOver (Move _ _ allyType _) (Move _ _ enemyType _) = case enemyType of
@@ -196,13 +196,15 @@ useMove idx ally enemy rand = (decreaseBuff finalAlly, decreaseBuff finalEnemy, 
         , receiveMultipleDamage newEnemy newAllyDamages
         )
     messages = ((if idx >= 0 then id else take 1) . (if diff >= 0 then id else reverse)) [
+        (if (allyMoveBuff 1) > 1 then "Yeah! " else "") ++
         "Ally " ++ monsterName ally ++ if healthPoints newAlly > 0
           then
             " rolled " ++ if healthPoints newEnemy > 0
               then show allyDamages ++ "!"
               else show (take diff allyDamages) ++ " first!"
           else " fainted!"
-      , "Enemy " ++ monsterName enemy ++ if healthPoints newEnemy > 0
+      , (if (enemyMoveBuff 1) > 1 then "Oh no! " else "") ++
+      "Enemy " ++ monsterName enemy ++ if healthPoints newEnemy > 0
           then
             " rolled " ++ if healthPoints newAlly > 0
               then show enemyDamages ++ "!"
@@ -342,7 +344,7 @@ battleDialogScene content ally enemy = Scene sDraws fDraws
     sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
       [ ("Moldura", P $ V2 0 0, id) ]
     fDraws =
-      ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True) :
+      ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-30), content, True) :
       fontDrawsMonsterNames ally enemy
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog | BattleEnd

@@ -51,7 +51,7 @@ appLoop window renderer sprites fonts state rand count = do
     MainBattle option -> draw $ mainBattleScene option ally enemy
     MoveSelection option -> draw $ moveSelectionScene option ally enemy
     ItemSelection option -> draw $ itemSelectionScene option ally enemy items
-    BattleDialog -> draw $ battleDialogScene (healthPoints ally) content ally enemy
+    BattleDialog -> draw $ battleDialogScene content ally enemy
     BattleEnd -> draw $ battleEndScene ally enemy
 
   present renderer

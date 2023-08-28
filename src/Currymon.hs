@@ -36,7 +36,6 @@ import Data.HashMap.Strict
 import System.FilePath
 import Data.Text (pack)
 import qualified Data.List
-import qualified Debug.Trace as Debug
 import Data.Char (toLower)
 
 
@@ -103,6 +102,9 @@ data Move = Move {
   , moveDices :: [Dice CInt]
   }
 
+idle :: Move
+idle = Move "Idle" "Does nothing" Typeless []
+
 smack :: Move
 smack = Move "Smack" "Rolls one d4 + 5 for damage" Rock [d4, (5*) <$> d1]
 
@@ -167,7 +169,7 @@ decreaseBuff (Monster n hp mhp kms bt) = Monster n hp mhp kms $ max (bt - 1) 0
 useMove :: Int -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
 useMove idx ally enemy rand = (decreaseBuff finalAlly, decreaseBuff finalEnemy, messages, finalRand)
   where
-    allyMove = selectMove idx ally
+    allyMove = if idx >= 0 then selectMove idx ally else idle
     enemyMove = selectMove (head rand) enemy
     (allyDamagesWoBuff, newRand) = rollMultiple (moveDices allyMove) (tail rand)
     (enemyDamagesWoBuff, finalRand) = rollMultiple (moveDices enemyMove) newRand
@@ -193,7 +195,7 @@ useMove idx ally enemy rand = (decreaseBuff finalAlly, decreaseBuff finalEnemy, 
           receiveMultipleDamage newAlly newEnemyDamages
         , receiveMultipleDamage newEnemy newAllyDamages
         )
-    messages = (if diff >= 0 then id else reverse) [
+    messages = ((if idx >= 0 then id else take 1) . (if diff >= 0 then id else reverse)) [
         "Ally " ++ monsterName ally ++ if healthPoints newAlly > 0
           then
             " rolled " ++ if healthPoints newEnemy > 0
@@ -220,12 +222,14 @@ data Item = Item {
   deriving Eq
 
 useItem :: Item -> Monster -> Monster -> [Int] -> (Monster, Monster, [String], [Int])
-useItem item ally enemy rand = case itemEffect item of
-  Potion heal -> (healAlly heal, enemy, ["Heal"], rand)
-  Buff turns -> (buffAlly turns, enemy, ["Buff"], rand)
+useItem item ally enemy rand = (finalAlly, finalEnemy, itemMessages ++ moveMessages, finalRand)
   where
     healAlly h = ally { healthPoints = healthPoints ally + h }
     buffAlly t = ally { buffedTurns = t }
+    (newAlly, itemMessages) = case itemEffect item of
+      Potion heal -> (healAlly heal, ["Healed " ++ show heal ++ " HP!"])
+      Buff turns -> (buffAlly turns, ["Buffed for " ++ show turns ++ " turns!"])
+    (finalAlly, finalEnemy, moveMessages, finalRand) = useMove (-1) newAlly enemy rand
 
 data Scene = Scene {
     spriteDraws :: [(String, Point V2 CInt, CInt -> CInt)]
@@ -234,8 +238,9 @@ data Scene = Scene {
 
 spriteDrawsMonsters :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
 spriteDrawsMonsters ally enemy = [
-    (((Prelude.map toLower $ monsterName ally) ++ "-back"), P $ V2 5 60, (2*))
-  , (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ gameRes * V2 1 0 + V2 (-60) 10, id)
+    (Prelude.map toLower (monsterName ally) ++ "-back", P $ V2 5 60, (2*))
+  , (Prelude.map toLower (monsterName enemy) ++ "-front", P $ gameRes * V2 1 0 + V2 (-60) 10, id)
+  , ("GrassPatch", P $ gameRes * V2 1 0 + V2 (-60) 32, id)
   ]
 
 fontDrawsMonsterNames :: Monster -> Monster -> [(String, Color, Point V2 CInt, String, Bool)]
@@ -245,12 +250,12 @@ fontDrawsMonsterNames ally enemy = [
   ]
 
 spriteDrawsHP :: Monster -> Monster -> [(String, Point V2 CInt, CInt -> CInt)]
-spriteDrawsHP ally enemy = [ 
+spriteDrawsHP ally enemy = [
   ("HpBarEnd", P $ V2 70 70, id)
   , ("HpBarEnd", P $ gameRes * V2 1 0 + V2 (-150) 20, id)
-  ] ++ 
-  whiteBarPos ally enemy ++ 
-  [ 
+  ] ++
+  whiteBarPos ally enemy ++
+  [
   (chooseHPBar ally, P $ V2 70 70, id)
   , (chooseHPBar enemy, P $ gameRes * V2 1 0 + V2 (-150) 20, id)
   ]
@@ -272,10 +277,6 @@ chooseHPBar m | hpPercentage m <= 0.20 = "HpBarR"
               | hpPercentage m <= 0.40 = "HpBarY"
               | otherwise              = "HpBarG"
 
-
-
-
-
 mainBattleScene :: Integral a => V2 a -> Monster -> Monster -> Scene
 mainBattleScene sel ally enemy = Scene sDraws fDraws
   where
@@ -288,28 +289,28 @@ mainBattleScene sel ally enemy = Scene sDraws fDraws
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), fightContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, itemContent, False),
-        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), monsterContent, False),
-        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, runContent, False)
+        ("PublicPixel", V4 100 100 100 255, P $ gameRes * V2 0 1 + V2 8 (-16), monsterContent, False),
+        ("PublicPixel", V4 100 100 100 255, P $ gameRes * V2 1 1 - V2 74 16, runContent, False)
       ] ++ fontDrawsMonsterNames ally enemy
 
-
 moveSelectionScene :: Integral a => V2 a -> Monster -> Monster -> Scene
-moveSelectionScene sel ally enemy = Scene sDraws fDraws
+moveSelectionScene sel@(V2 xIdx yIdx) ally enemy = Scene sDraws fDraws
   where
     moveOneContent = (if sel == V2 0 0 then ">" else "") ++ moveName (selectMove 0 ally)
     moveTwoContent = (if sel == V2 1 0 then ">" else "") ++ moveName (selectMove 1 ally)
     moveThreeContent = (if sel == V2 0 1 then ">" else "") ++ moveName (selectMove 2 ally)
     moveFourContent = (if sel == V2 1 1 then ">" else "") ++ moveName (selectMove 3 ally)
-    sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++ 
-      [ ("Moldura", P $ V2 0 0, id) ]
+    moveDescription = (moveDesc . selectMove (fromIntegral $ xIdx + 2*yIdx)) ally
+    sDraws = [ ("MolduraMovimento", P $ V2 0 0, id) ] ++
+      spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy
     fDraws = [
+        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-64), moveDescription, True),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), moveOneContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 28, moveTwoContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-16), moveThreeContent, False),
         ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 1 1 - V2 74 16, moveFourContent, False)
       ] ++ fontDrawsMonsterNames ally enemy
 
--- TODO
 itemSelectionScene :: Integral a => V2 a -> Monster -> Monster -> [Item] -> Scene
 itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
   where
@@ -320,37 +321,38 @@ itemSelectionScene (V2 _ sel) ally enemy items = Scene sDraws fDraws
     fDraws = [
         ("PublicPixel", V4 0 0 0 255, P $ V2 8 (28 + 12 * i), curContent, False)
         | (curContent, i) <- zip content [0..]
-      ] ++ 
+      ] ++
       [ ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), curDescription, True)
-      | (curDescription, i) <- zip description [0..]
-      ] 
+      | curDescription <- description
+      ] ++ fontDrawsMonsterNames ally enemy
 
 battleEndScene :: Monster -> Monster -> Scene
 battleEndScene ally enemy | healthPoints enemy <= 0 = Scene sDrawsV fDrawsV
                           | healthPoints ally <= 0 = Scene sDrawsD fDrawsD
                           | otherwise = undefined
   where
-    sDrawsV = [ (((Prelude.map toLower $ monsterName ally) ++ "-front"), P $ V2 64 56, id)]
-    sDrawsD = [ (((Prelude.map toLower $ monsterName enemy) ++ "-front"), P $ V2 64 56, id)]
+    sDrawsV = [ (Prelude.map toLower (monsterName ally) ++ "-front", P $ V2 64 56, id)]
+    sDrawsD = [ (Prelude.map toLower (monsterName enemy) ++ "-front", P $ V2 64 56, id)]
     fDrawsV = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 40 (-40), "VICTORY!!!", True) ]
     fDrawsD = [("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 44 (-40), "DEFEAT!!!", True) ]
 
-
--- TODO
-battleDialogScene :: CInt -> String -> Monster -> Monster -> Scene
-battleDialogScene allyHP content ally enemy = Scene sDraws fDraws
+battleDialogScene :: String -> Monster -> Monster -> Scene
+battleDialogScene content ally enemy = Scene sDraws fDraws
   where
     sDraws = spriteDrawsMonsters ally enemy ++ spriteDrawsHP ally enemy ++
       [ ("Moldura", P $ V2 0 0, id) ]
-    fDraws = [
-        ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True)
-      ] ++ fontDrawsMonsterNames ally enemy
+    fDraws =
+      ("PublicPixel", V4 0 0 0 255, P $ gameRes * V2 0 1 + V2 8 (-28), content, True) :
+      fontDrawsMonsterNames ally enemy
 
 data SceneFSM = MainBattle (V2 CInt) | MoveSelection (V2 CInt) | ItemSelection (V2 CInt) | BattleDialog | BattleEnd
 
 advanceFSM :: SceneFSM -> [Event] -> SceneFSM
-advanceFSM (MainBattle (V2 xIdx yIdx)) events
-  | any eventIsActionConfirm events = if xIdx == 0 then MoveSelection (V2 0 0) else ItemSelection (V2 0 0)
+advanceFSM fsm@(MainBattle option@(V2 xIdx yIdx)) events
+  | any eventIsActionConfirm events = case option of
+    V2 0 0 -> MoveSelection (V2 0 0)
+    V2 1 0 -> ItemSelection (V2 0 0)
+    _ -> fsm
   | otherwise = MainBattle $ V2 newXIdx newYIdx
   where
     xipa = xIdx + xAction
@@ -400,7 +402,6 @@ advanceFSM BattleEnd events = if any eventIsActionConfirm events then MainBattle
 
 advanceFSM BattleDialog _ = BattleDialog
 
-
 data BattleState = BattleState {
     sceneFSM       :: SceneFSM
   , allyMonster    :: Monster
@@ -411,10 +412,11 @@ data BattleState = BattleState {
   }
 
 initialBattleState :: [Int] -> (BattleState, [Int])
-initialBattleState rand = (BattleState (MainBattle $ V2 0 0) allyM enemyM [Item "Potion" (Potion 15) "Potion (+15 HP)", Item "Attack" (Buff 2) "2x Dano por 2 Turnos"] "" [], drop 2 rand)
-  where 
-    allyM = monsterList !! ((rand !! 0) `mod` 3)
-    enemyM = monsterList !! ((rand !! 1) `mod` 3)
+initialBattleState rand = (BattleState (MainBattle $ V2 0 0) allyM enemyM [Item "Potion" (Potion 30) "+30 HP", Item "Attack" (Buff 2) "2x damage for 2 turns"] "" [], drop 2 rand)
+  where
+    monsterCount = length monsterList
+    allyM = monsterList !! (head rand `mod` monsterCount)
+    enemyM = monsterList !! ((rand !! 1) `mod` monsterCount)
 
 updateBattleState :: BattleState -> [Event] -> [Int] -> Int -> (BattleState, [Int])
 updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy items content messages) events rand _ =
@@ -424,11 +426,18 @@ updateBattleState (BattleState fsm@(MoveSelection (V2 xIdx yIdx)) ally enemy ite
       BattleDialog -> BattleState newFSM newAlly newEnemy items "" newMessages
       _ -> BattleState newFSM ally enemy items content messages
     newFSM = advanceFSM fsm events
-    idx = fromIntegral $ xIdx + yIdx
+    idx = fromIntegral $ xIdx + 2*yIdx
     (newAlly, newEnemy, newMessages, newRand) = useMove idx ally enemy rand
 
--- TODO: Create `data Item`
-updateBattleState (BattleState fsm@(ItemSelection (V2 _ idx)) ally enemy items content messages) events rand count =
+updateBattleState s@(BattleState fsm@(ItemSelection _) _ _ [] _ _) events rand _ =
+  (s { sceneFSM = finalFSM }, rand)
+  where
+    newFSM = advanceFSM fsm events
+    finalFSM = case newFSM of
+      BattleDialog -> ItemSelection $ V2 0 0
+      other -> other
+
+updateBattleState (BattleState fsm@(ItemSelection (V2 _ idx)) ally enemy items content messages) events rand _ =
   (newBattleState, newRand)
   where
     itemCount = fromIntegral $ length items
@@ -443,20 +452,20 @@ updateBattleState (BattleState BattleDialog ally enemy items content (x:ys)) eve
   | any eventIsActionConfirm events = if content == x
     then ini "" ys
     else ini x (x:ys)
-  | otherwise = if content /= x && even count
+  | otherwise = if content /= x && (count `mod` 4 < 3)
     then ini (take (length content + 1) x) (x:ys)
     else ini content (x:ys)
   where ini c m = (BattleState BattleDialog ally enemy items c m, rand)
 
-updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ = 
+updateBattleState (BattleState BattleDialog ally enemy items _ []) _ rand _ =
   if healthPoints ally <= 0 || healthPoints enemy <= 0
   then (BattleState BattleEnd ally enemy items "" [], rand)
   else (BattleState (MainBattle $ V2 0 0) ally enemy items "" [], rand)
 
 updateBattleState (BattleState BattleEnd ally enemy items content messages) events rand _ =
   case newFSM of
-    MainBattle _ -> (initialBattleState rand)
-    _ -> (BattleState newFSM ally enemy items content messages, rand)   
+    MainBattle _ -> initialBattleState rand
+    _ -> (BattleState newFSM ally enemy items content messages, rand)
   where newFSM = advanceFSM BattleEnd events
 
 updateBattleState (BattleState fsm ally enemy items content messages) events rand _ =
@@ -528,14 +537,13 @@ spritePaths = [
   , "./res/sprite/HpBarW.png"
   , "./res/sprite/HpBarEnd.png"
   , "./res/sprite/Moldura.png"
+  , "./res/sprite/MolduraMovimento.png"
   , "./res/sprite/MolduraItem.png"
+  , "./res/sprite/GrassPatch.png"
   , "./res/sprite/serpada-front.png"
   , "./res/sprite/serpada-back.png"
   , "./res/sprite/lomba-front.png"
   , "./res/sprite/lomba-back.png"
-
-  --, "./res/sprite/lomba-front.png"
-  --, "./res/sprite/lomba-back.png"
   ]
 
 fontPaths :: [FilePath]

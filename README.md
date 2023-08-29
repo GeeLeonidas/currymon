@@ -4,7 +4,7 @@
 - O *wrapper* do SDL2 não consegue detectar suporte à aceleração por *hardware* em algumas máquinas. Utilizou-se renderização por *software* como contramedida.
 
 ## Como reproduzir o ambiente utilizado
-- Instalale o [Stack](https://docs.haskellstack.org/en/stable/#how-to-install-stack)
+- Instale o [Stack](https://docs.haskellstack.org/en/stable/#how-to-install-stack)
 - Instale as bibliotecas SDL2 com uma das opções:
   - (Recomendado!) [Gerenciador de pacotes Nix](https://nixos.org/download)
     - Utilize a integração do Stack com o Nix (adicione `--nix` ao final de um comando `stack`)
